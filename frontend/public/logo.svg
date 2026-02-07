@@ -1,0 +1,23 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Poseidon Logo
+       Three ascending pillars with connecting arc
+       Represents: trident prongs, multi-DEX, growth -->
+  
+  <!-- Left pillar -->
+  <rect x="4" y="14" width="5" height="14" rx="2.5" fill="currentColor"/>
+  
+  <!-- Center pillar - tallest -->
+  <rect x="13.5" y="6" width="5" height="22" rx="2.5" fill="currentColor"/>
+  
+  <!-- Right pillar -->
+  <rect x="23" y="10" width="5" height="18" rx="2.5" fill="currentColor"/>
+  
+  <!-- Connecting arc -->
+  <path 
+    d="M6.5 14C6.5 10 10 6 16 6C22 6 25.5 10 25.5 10" 
+    stroke="currentColor" 
+    stroke-width="3" 
+    stroke-linecap="round"
+    fill="none"
+  />
+</svg>

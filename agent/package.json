@@ -1,0 +1,37 @@
+{
+  "name": "lp-vault-agent",
+  "version": "0.1.0",
+  "description": "Autonomous LP management agent with privacy via Arcium",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "api": "tsx src/api/server.ts",
+    "api:dev": "tsx watch src/api/server.ts",
+    "test": "vitest",
+    "test:adapters": "tsx src/test/verify-adapters.ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/web3.js": "^1.95.0",
+    "@solana/spl-token": "^0.4.0",
+    "bn.js": "^5.2.1",
+    "decimal.js": "^10.4.3",
+    "dotenv": "^16.4.0"
+  },
+  "optionalDependencies": {
+    "@meteora-ag/dlmm": "^1.9.3",
+    "@orca-so/whirlpools-sdk": "^0.13.0",
+    "@raydium-io/raydium-sdk-v2": "^0.2.32-alpha"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.5",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  },
+  "packageManager": "pnpm@9.14.2+sha512.6e2baf77d06b9362294152c851c4f278ede37ab1eba3a55fda317a4a17b209f4dbb973fb250a77abc463a341fcb1f17f17cfa24091c4eb319cda0d9b84278387"
+}

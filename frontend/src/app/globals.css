@@ -1,0 +1,450 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Poseidon Design System - Slate Steel
+   * Unique slate background (not dark mode, not light mode)
+   * Silver metallics from logo
+   * Premium, powerful aesthetic
+   */
+
+  /* Background layers - slate steel (lighter, unique) */
+  --bg-base: #1e2936;
+  --bg-elevated: #283544;
+  --bg-surface: #324052;
+  --bg-hover: #3c4d60;
+
+  /* Borders - steel tinted */
+  --border-default: #4a5d70;
+  --border-subtle: #3a4a5a;
+  --border-strong: #5a6d80;
+
+  /* Text hierarchy - silver metallics */
+  --text-primary: #ffffff;
+  --text-secondary: #d0d0d0;
+  --text-muted: #9aa5b1;
+  --text-faint: #6b7a8a;
+
+  /* Accent - silver/platinum (from logo) */
+  --accent: #e0e0e0;
+  --accent-hover: #f0f0f0;
+  --accent-muted: rgba(224, 224, 224, 0.15);
+  --accent-strong: #ffffff;
+
+  /* Primary action - bright white for CTAs */
+  --ivory: #ffffff;
+  --ivory-muted: #e8e8e8;
+
+  /* Status colors */
+  --success: #4ade80;
+  --success-muted: rgba(74, 222, 128, 0.15);
+  --warning: #fbbf24;
+  --warning-muted: rgba(251, 191, 36, 0.15);
+  --danger: #f87171;
+  --danger-muted: rgba(248, 113, 113, 0.15);
+
+  /* Legacy semantic mapping */
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+  --card: var(--bg-elevated);
+  --card-hover: var(--bg-surface);
+  --border: var(--border-default);
+  --border-muted: var(--border-subtle);
+  --primary: var(--ivory);
+  --primary-hover: var(--ivory-muted);
+  --secondary: var(--bg-surface);
+  --muted: var(--text-muted);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  color: var(--text-primary);
+}
+
+body {
+  background-color: #0a1825;
+}
+
+body {
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography - Bebas Neue for headings (matches logo), Inter for body */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-bebas), var(--font-inter), system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Hide number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Custom scrollbar - minimal */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Gradient text - metallic silver shine */
+.gradient-text {
+  background: linear-gradient(180deg, #ffffff 0%, #b0b0b0 50%, #ffffff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Metallic text effect */
+.metallic-text {
+  background: linear-gradient(180deg, #f0f0f0 0%, #c0c0c0 40%, #e0e0e0 60%, #b0b0b0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card styles - steel with silver borders */
+.card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  transition: border-color 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--border-default);
+}
+
+.card-elevated {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Button base */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: none;
+}
+
+/* Primary button - white on slate */
+.btn-primary {
+  background: var(--ivory);
+  color: var(--bg-base);
+}
+
+.btn-primary:hover {
+  background: var(--ivory-muted);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary button - silver outline */
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent-hover);
+  color: var(--accent-hover);
+  background: var(--accent-muted);
+}
+
+/* Ghost button */
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* Input styles */
+.input {
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.input::placeholder {
+  color: var(--text-faint);
+}
+
+/* Number inputs use mono font */
+.input-number {
+  font-family: var(--font-jetbrains), "SF Mono", Monaco, monospace;
+}
+
+/* Badge styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-accent {
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+.badge-success {
+  background: var(--success-muted);
+  color: var(--success);
+}
+
+.badge-warning {
+  background: var(--warning-muted);
+  color: var(--warning);
+}
+
+.badge-danger {
+  background: var(--danger-muted);
+  color: var(--danger);
+}
+
+/* Override wallet adapter styles - Full Poseidon Theme */
+.wallet-adapter-button {
+  background-color: var(--ivory) !important;
+  color: var(--bg-base) !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+}
+
+.wallet-adapter-button:hover {
+  background-color: var(--ivory-muted) !important;
+}
+
+/* Modal Overlay */
+.wallet-adapter-modal {
+  background-color: rgba(10, 24, 37, 0.9) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Modal Container */
+.wallet-adapter-modal-wrapper {
+  background: linear-gradient(180deg, #0d1926 0%, #0a1520 100%) !important;
+  border: 1px solid #1a3050 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(126, 200, 232, 0.1) !important;
+  max-width: 400px !important;
+}
+
+/* Modal Title */
+.wallet-adapter-modal-title {
+  color: #e0e8f0 !important;
+  font-family: var(--font-bebas), system-ui, sans-serif !important;
+  font-size: 1.5rem !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+}
+
+/* Wallet List */
+.wallet-adapter-modal-list {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.wallet-adapter-modal-list li {
+  margin-bottom: 8px !important;
+}
+
+/* Wallet List Button */
+.wallet-adapter-modal-list .wallet-adapter-button {
+  background: #1a3050 !important;
+  border: 1px solid #2a4060 !important;
+  border-radius: 12px !important;
+  color: #e0e8f0 !important;
+  padding: 12px 16px !important;
+  width: 100% !important;
+  justify-content: flex-start !important;
+  transition: all 0.2s ease !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button:hover {
+  background: #2a4060 !important;
+  border-color: #3a5070 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Wallet Icon */
+.wallet-adapter-button-start-icon {
+  margin-right: 12px !important;
+}
+
+.wallet-adapter-button-start-icon img {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 8px !important;
+}
+
+/* Modal Close Button */
+.wallet-adapter-modal-button-close {
+  background: #1a3050 !important;
+  border-radius: 10px !important;
+  transition: all 0.2s ease !important;
+}
+
+.wallet-adapter-modal-button-close:hover {
+  background: #2a4060 !important;
+}
+
+.wallet-adapter-modal-button-close svg {
+  fill: #7ec8e8 !important;
+}
+
+/* Collapse Button */
+.wallet-adapter-collapse-button {
+  color: #5a7090 !important;
+}
+
+.wallet-adapter-collapse-button:hover {
+  color: #7ec8e8 !important;
+}
+
+/* Modal Middle Section */
+.wallet-adapter-modal-middle {
+  background: transparent !important;
+}
+
+.wallet-adapter-modal-middle-button {
+  background: #1a3050 !important;
+  border: 1px solid #2a4060 !important;
+  border-radius: 12px !important;
+  color: #e0e8f0 !important;
+}
+
+.wallet-adapter-modal-middle-button:hover {
+  background: #2a4060 !important;
+}
+
+/* Utility classes */
+.text-accent {
+  color: var(--accent);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-success {
+  color: var(--success);
+}
+
+.text-danger {
+  color: var(--danger);
+}
+
+.bg-card {
+  background: var(--bg-elevated);
+}
+
+.border-default {
+  border-color: var(--border-default);
+}
+
+/* Mono font for numbers/data */
+.font-mono {
+  font-family: var(--font-jetbrains), "SF Mono", Monaco, monospace;
+}
+
+/* Animation utilities */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    var(--bg-hover) 50%,
+    var(--bg-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Focus ring */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Background is now handled via fixed div in layout.tsx (AllDomains pattern) */

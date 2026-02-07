@@ -1,0 +1,195 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
+import { TOKENS, type Token } from "@/lib/tokens";
+
+interface TokenSelectorProps {
+  selectedToken: Token | null;
+  onSelect: (token: Token) => void;
+  excludeToken?: Token | null;
+  label?: string;
+  amount: string;
+  onAmountChange: (amount: string) => void;
+  balance?: number;
+  disabled?: boolean;
+  usdPrice?: number;
+}
+
+export default function TokenSelector({
+  selectedToken,
+  onSelect,
+  excludeToken,
+  label,
+  amount,
+  onAmountChange,
+  balance,
+  disabled = false,
+  usdPrice = 0,
+}: TokenSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredTokens = TOKENS.filter((token) => {
+    if (excludeToken && token.symbol === excludeToken.symbol) return false;
+    if (!search) return true;
+    return (
+      token.symbol.toLowerCase().includes(search.toLowerCase()) ||
+      token.name.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  const handleSelect = (token: Token) => {
+    onSelect(token);
+    setIsOpen(false);
+    setSearch("");
+  };
+
+  const handleMaxClick = () => {
+    if (balance !== undefined) {
+      onAmountChange(balance.toString());
+    }
+  };
+
+  return (
+    <div className="bg-[#0d1d30]/80 rounded-xl p-4 border border-[#1a3050] transition-colors hover:border-[#2a4060]">
+      {label && (
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm text-[#7090a0]">{label}</span>
+          {balance !== undefined && (
+            <span className="text-sm text-[#7090a0]">
+              Balance: <span className="text-[#ffffff]">{balance.toFixed(4)}</span>
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        {/* Token Selector Button */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => !disabled && setIsOpen(!isOpen)}
+            disabled={disabled}
+            className="flex items-center gap-2 px-3 py-2 bg-[#0a1520]/80 rounded-lg border border-[#1a3050] hover:border-[#2a4060] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {selectedToken ? (
+              <>
+                <Image
+                  src={selectedToken.logo}
+                  alt={selectedToken.symbol}
+                  width={28}
+                  height={28}
+                  className="rounded-full"
+                  unoptimized
+                />
+                <span className="font-semibold">{selectedToken.symbol}</span>
+              </>
+            ) : (
+              <span className="text-[#5a7090]">Select</span>
+            )}
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+
+          {/* Dropdown */}
+          {isOpen && (
+            <div className="absolute top-full left-0 mt-2 w-64 bg-[#0a1520]/95 backdrop-blur-md border border-[#1a3050] rounded-xl shadow-xl shadow-black/50 z-50 overflow-hidden">
+              {/* Search */}
+              <div className="p-3 border-b border-[#1a3050]">
+                <input
+                  type="text"
+                  placeholder="Search tokens..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#0d1d30]/80 border border-[#1a3050] rounded-lg focus:border-[#2a4060] focus:outline-none text-sm"
+                  autoFocus
+                />
+              </div>
+
+              {/* Token List */}
+              <div className="max-h-60 overflow-y-auto">
+                {filteredTokens.length === 0 ? (
+                  <div className="p-4 text-center text-[#5a7090] text-sm">
+                    No tokens found
+                  </div>
+                ) : (
+                  filteredTokens.map((token) => (
+                    <button
+                      key={token.symbol}
+                      onClick={() => handleSelect(token)}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#1a3050]/50 transition-colors"
+                    >
+                      <Image
+                        src={token.logo}
+                        alt={token.symbol}
+                        width={36}
+                        height={36}
+                        className="rounded-full"
+                        unoptimized
+                      />
+                      <div className="text-left">
+                        <div className="font-medium">{token.symbol}</div>
+                        <div className="text-xs text-[#5a7090]">{token.name}</div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Amount Input */}
+        <div className="flex-1 relative">
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => onAmountChange(e.target.value)}
+            placeholder="0.00"
+            disabled={disabled}
+            className="w-full bg-transparent text-2xl font-semibold text-right focus:outline-none placeholder-[#5a7090] disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+        </div>
+
+        {/* Max Button */}
+        {balance !== undefined && balance > 0 && (
+          <button
+            onClick={handleMaxClick}
+            disabled={disabled}
+            className="px-2 py-1 text-xs font-semibold text-[#7ec8e8] bg-[#7ec8e8]/10 rounded-md hover:bg-[#7ec8e8]/20 transition-colors disabled:opacity-50"
+          >
+            MAX
+          </button>
+        )}
+      </div>
+
+      {/* USD Value */}
+      {amount && parseFloat(amount) > 0 && (
+        <div className="mt-2 text-right text-sm text-[#5a7090]">
+          ~ ${(parseFloat(amount) * usdPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </div>
+      )}
+    </div>
+  );
+}
