@@ -105,7 +105,7 @@ export class MeteoraAdapter implements IDexAdapter {
         fee: (pairData.base_fee_percentage || 0) * 100, // Convert to bps
         tvl: new Decimal(pairData.liquidity || 0),
         volume24h: new Decimal(pairData.trade_volume_24h || 0),
-        apr24h: new Decimal(pairData.apr || 0),
+        apr24h: new Decimal(pairData.apr || 0).mul(100), // API returns decimal (0.38 = 38%), convert to percentage
         binStep: pairData.bin_step,
       poolType: 'DLMM',
       };
@@ -366,7 +366,7 @@ export class MeteoraAdapter implements IDexAdapter {
       fee: (pair.base_fee_percentage || 0) * 100, // Convert to bps
       tvl: new Decimal(pair.liquidity || 0),
       volume24h: new Decimal(pair.trade_volume_24h || 0),
-      apr24h: new Decimal(pair.apr || 0),
+      apr24h: new Decimal(pair.apr || 0).mul(100), // API returns decimal (0.38 = 38%), convert to percentage
       binStep: pair.bin_step,
       poolType: 'DLMM',
     };

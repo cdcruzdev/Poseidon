@@ -177,7 +177,17 @@ export class OrcaAdapter implements IDexAdapter {
 
   async getCurrentPrice(poolAddress: PublicKey): Promise<Decimal> {
     try {
-      const response = await fetch(`${this.API_BASE}/v1/whirlpool/${poolAddress.toBase58()}`);
+      // Try cached pool list first (individual pool API is unreliable)
+      const allPools = await this.getPoolList();
+      const poolData = allPools.find((p: any) => p.address === poolAddress.toBase58());
+      if (poolData?.price) {
+        return new Decimal(poolData.price);
+      }
+      
+      // Fallback to individual API
+      const response = await fetch(`${this.API_BASE}/v1/whirlpool/${poolAddress.toBase58()}`, {
+        signal: AbortSignal.timeout(10000),
+      });
       const data = await response.json() as any;
       return new Decimal(data.price || 0);
     } catch {
@@ -460,8 +470,10 @@ export class OrcaAdapter implements IDexAdapter {
 
   private convertToPoolInfo(pool: any): PoolInfo {
     // Orca API returns volume and APR as nested objects: { day, week, month }
+    // feeApr is in decimal form (0.5933 = 59.33%), multiply by 100 for percentage
     const volume24h = pool.volume?.day || pool.volume24h || 0;
-    const apr24h = pool.feeApr?.day || pool.totalApr?.day || pool.apr24h || 0;
+    const rawApr = pool.feeApr?.day || pool.totalApr?.day || pool.apr24h || 0;
+    const apr24h = rawApr * 100;
     
     return {
       dex: 'orca',
