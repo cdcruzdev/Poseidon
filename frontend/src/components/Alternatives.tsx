@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Pool } from "@/lib/api";
 import PoolResult from "@/components/PoolResult";
+import AnimateHeight from "@/components/AnimateHeight";
 
 interface AlternativesProps {
   pools: Pool[];
@@ -77,7 +78,7 @@ export default function Alternatives({
         </svg>
       </button>
 
-      {isOpen && (
+      <AnimateHeight open={isOpen}>
         <div className="mt-2 space-y-2">
           {alternativePools.map((pool) => (
             <PoolResult
@@ -89,7 +90,7 @@ export default function Alternatives({
             />
           ))}
         </div>
-      )}
+      </AnimateHeight>
     </div>
   );
 }

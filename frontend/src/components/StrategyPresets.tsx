@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AnimateHeight from "@/components/AnimateHeight";
 
 export interface Strategy {
   id: "conservative" | "balanced" | "aggressive";
@@ -108,7 +109,7 @@ export default function StrategyPresets({ selected, onSelect }: StrategyPresetsP
         </svg>
       </button>
 
-      {expanded && (
+      <AnimateHeight open={expanded}>
         <div className="mt-3 space-y-2">
           {strategies.map((strategy) => {
             const isSelected = strategy.id === selected;
@@ -155,7 +156,7 @@ export default function StrategyPresets({ selected, onSelect }: StrategyPresetsP
                     <p className="text-[#8899aa]">{strategy.rebalanceFreq}</p>
                   </div>
                   <div>
-                    <span className="text-[#5a7090]">Est. APR</span>
+                    <span className="text-[#5a7090]">Est. 24h Yield</span>
                     <p className="text-[#8899aa] font-mono">{strategy.expectedApr}</p>
                   </div>
                 </div>
@@ -163,7 +164,7 @@ export default function StrategyPresets({ selected, onSelect }: StrategyPresetsP
             );
           })}
         </div>
-      )}
+      </AnimateHeight>
     </div>
   );
 }

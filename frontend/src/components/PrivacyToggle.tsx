@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Toggle from "@/components/Toggle";
+import AnimateHeight from "@/components/AnimateHeight";
+import FadeSlideIn from "@/components/FadeSlideIn";
 
 interface PrivacyToggleProps {
   enabled: boolean;
@@ -43,21 +45,21 @@ export default function PrivacyToggle({
         <Toggle enabled={enabled} onChange={onEnabledChange} />
       </div>
 
-      {showInfo && (
+      <AnimateHeight open={showInfo}>
         <div className="mt-2 p-3 bg-[#0a1520]/60 rounded-lg text-xs text-[#8899aa]">
           Your position is encrypted using Arcium privacy technology. 
           Your LP positions, deposit amounts, and trading activity are hidden from public view.
         </div>
-      )}
+      </AnimateHeight>
 
-      {enabled && (
+      <FadeSlideIn show={enabled}>
         <div className="mt-1 flex items-center gap-1.5 text-xs text-[#7ec8e8]">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           </svg>
           <span>Encrypted with Arcium</span>
         </div>
-      )}
+      </FadeSlideIn>
     </div>
   );
 }

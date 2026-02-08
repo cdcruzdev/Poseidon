@@ -1,6 +1,7 @@
-import { Connection, PublicKey, Transaction, Keypair, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
 import Decimal from 'decimal.js';
 import BN from 'bn.js';
+import { sendTransaction } from '../wallet/send-tx.js';
 import {
   IDexAdapter,
   CreatePositionParams,
@@ -106,6 +107,7 @@ export class MeteoraAdapter implements IDexAdapter {
         volume24h: new Decimal(pairData.trade_volume_24h || 0),
         apr24h: new Decimal(pairData.apr || 0),
         binStep: pairData.bin_step,
+      poolType: 'DLMM',
       };
     } catch (error) {
       console.error('Error getting pool info:', error);
@@ -165,10 +167,11 @@ export class MeteoraAdapter implements IDexAdapter {
       });
 
       // Send transaction
-      const signature = await sendAndConfirmTransaction(
+      const signature = await sendTransaction(
         this.connection,
         tx,
-        [params.wallet, positionKeypair]
+        params.wallet,
+        [positionKeypair]
       );
 
       return {
@@ -365,6 +368,7 @@ export class MeteoraAdapter implements IDexAdapter {
       volume24h: new Decimal(pair.trade_volume_24h || 0),
       apr24h: new Decimal(pair.apr || 0),
       binStep: pair.bin_step,
+      poolType: 'DLMM',
     };
   }
 

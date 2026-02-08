@@ -200,7 +200,7 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
                   <span>${(pool.tvl / 1_000_000).toFixed(2)}M</span>
                 </div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-[#a1a1aa]">Est. APR</span>
+                  <span className="text-[#a1a1aa]">Est. 24h Yield</span>
                   <span className="text-[#4ade80]">{pool.apr24h.toFixed(2)}%</span>
                 </div>
                 <div className="flex justify-between text-sm">

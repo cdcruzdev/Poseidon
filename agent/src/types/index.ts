@@ -4,6 +4,9 @@ import type { Decimal } from 'decimal.js';
 // Supported DEXs
 export type DexType = 'meteora' | 'orca' | 'raydium';
 
+// Pool type within a DEX
+export type PoolType = 'DLMM' | 'DAMM_V2' | 'Whirlpool' | 'CLMM' | 'unknown';
+
 // Position status
 export type PositionStatus = 'active' | 'out_of_range' | 'closed' | 'pending';
 
@@ -47,6 +50,7 @@ export interface PoolInfo {
   apr24h: Decimal;
   tickSpacing?: number; // for concentrated liquidity
   binStep?: number; // for Meteora DLMM
+  poolType?: PoolType; // e.g. DLMM, DAMM_V2, Whirlpool, CLMM
 }
 
 // User position

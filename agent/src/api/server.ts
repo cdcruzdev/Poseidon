@@ -8,6 +8,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import Decimal from 'decimal.js';
 import { createDefaultRegistry, DexRegistry } from '../dex/index.js';
 import { getPriceOracle } from '../core/price-oracle.js';
+import { FeeCollector } from '../core/fee-collector.js';
 import { PoolInfo } from '../types/index.js';
 
 const PORT = process.env.API_PORT || 3001;
@@ -27,7 +28,13 @@ const TOKENS: Record<string, string> = {
 
 // Initialize components
 let registry: DexRegistry | null = null;
+let feeCollector: FeeCollector | null = null;
 const priceOracle = getPriceOracle();
+
+/** Set the fee collector instance (called from index.ts) */
+export function setFeeCollector(fc: FeeCollector): void {
+  feeCollector = fc;
+}
 
 interface ApiResponse {
   success: boolean;
@@ -40,6 +47,7 @@ interface SimplePool {
   tokenA: { symbol: string; mint: string };
   tokenB: { symbol: string; mint: string };
   dex: string;
+  poolType: string;
   tvl: number;
   volume24h: number;
   feeRate: number;
@@ -87,6 +95,7 @@ function convertPoolToSimple(pool: PoolInfo): SimplePool {
         mint: typeof pool.tokenB === 'string' ? pool.tokenB : pool.tokenB.toBase58() 
       },
       dex: pool.dex,
+      poolType: pool.poolType || 'unknown',
       tvl: pool.tvl instanceof Decimal ? pool.tvl.toNumber() : Number(pool.tvl || 0),
       volume24h: pool.volume24h instanceof Decimal ? pool.volume24h.toNumber() : Number(pool.volume24h || 0),
       feeRate: (pool.fee || 0) / 10000, // Convert bps to decimal
@@ -475,6 +484,39 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       return;
     }
 
+    // Fee stats + calculate deposit fee
+    if (path === '/api/fees') {
+      if (!feeCollector) {
+        jsonResponse(res, { success: false, error: 'Fee collector not initialized' }, 503);
+        return;
+      }
+
+      const query = parseQuery(url);
+      const stats = feeCollector.getStats();
+
+      // If depositAmount provided, calculate fee breakdown
+      if (query.depositAmount) {
+        const amount = new Decimal(query.depositAmount);
+        const breakdown = feeCollector.calculateDepositFee(amount);
+        jsonResponse(res, {
+          success: true,
+          data: {
+            ...stats,
+            depositBreakdown: {
+              inputAmount: amount.toString(),
+              toPosition: breakdown.toPosition.toString(),
+              toTreasury: breakdown.toTreasury.toString(),
+              feePercent: `${stats.config.depositFeeBps / 100}%`,
+            },
+          },
+        });
+        return;
+      }
+
+      jsonResponse(res, { success: true, data: stats });
+      return;
+    }
+
     // Agent status
     if (path === '/api/status') {
       const reg = registry;
@@ -519,6 +561,8 @@ export async function startApiServer(): Promise<http.Server> {
     console.log('  GET /api/price?symbol=SOL');
     console.log('  GET /api/prices?symbols=SOL,JUP,USDC');
     console.log('  GET /api/compare?tokenA=SOL&tokenB=USDC');
+    console.log('  GET /api/fees');
+    console.log('  GET /api/fees?depositAmount=1000000000  (calculate fee for 1 SOL)');
     console.log('  GET /api/status');
     console.log('');
   });

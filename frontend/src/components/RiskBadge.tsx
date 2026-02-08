@@ -195,7 +195,7 @@ export default function RiskBadge({ pool, showTooltip = true, size = "sm" }: Ris
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#5a7090]">APR</span>
+                <span className="text-[#5a7090]">24h Yield</span>
                 <span className={(pool.apr24h || 0) > 100 ? "text-[#fbbf24]" : "text-[#4ade80]"}>
                   {(pool.apr24h || pool.estimatedApr || 0).toFixed(1)}%
                 </span>

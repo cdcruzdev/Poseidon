@@ -12,6 +12,7 @@ import PrivacyToggle from "@/components/PrivacyToggle";
 import YieldSimulator from "@/components/YieldSimulator";
 import ILCalculator from "@/components/ILCalculator";
 import StrategyPresets, { type Strategy } from "@/components/StrategyPresets";
+import AnimateHeight from "@/components/AnimateHeight";
 import { TOKENS, type Token } from "@/lib/tokens";
 import { comparePools, type Pool } from "@/lib/api";
 
@@ -304,7 +305,7 @@ export default function DepositCard() {
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </button>
-              {showFees && (
+              <AnimateHeight open={showFees}>
                 <div className="mt-3 space-y-2 text-sm">
                   {privacyEnabled && (
                     <div className="flex justify-between">
@@ -323,7 +324,7 @@ export default function DepositCard() {
                     <span className="text-[#8899aa]">~0.00025 SOL</span>
                   </div>
                 </div>
-              )}
+              </AnimateHeight>
             </div>
           )}
 

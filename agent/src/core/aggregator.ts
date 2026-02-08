@@ -14,6 +14,7 @@ export interface SimplePoolInfo {
   tokenA: { symbol: string; mint: string };
   tokenB: { symbol: string; mint: string };
   dex: string;
+  poolType: string;
   tvl: number;
   volume24h: number;
   feeRate: number;
@@ -99,6 +100,7 @@ export class LPAggregator {
         mint: pool.tokenB instanceof PublicKey ? pool.tokenB.toBase58() : String(pool.tokenB)
       },
       dex: pool.dex,
+      poolType: pool.poolType || 'unknown',
       tvl: pool.tvl instanceof Decimal ? pool.tvl.toNumber() : Number(pool.tvl),
       volume24h: pool.volume24h instanceof Decimal ? pool.volume24h.toNumber() : Number(pool.volume24h),
       feeRate: (pool.fee || 0) / 10000, // Convert bps to decimal

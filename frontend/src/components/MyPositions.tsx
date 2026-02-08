@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import PositionCard, { Position } from "./PositionCard";
+import PortfolioSummary from "./PortfolioSummary";
 
 const POSITIONS_PER_PAGE = 3;
 
@@ -193,6 +194,11 @@ export default function MyPositions() {
             Connect Wallet
           </button>
         </div>
+      )}
+
+      {/* Portfolio Summary - Only when connected with positions */}
+      {mounted && connected && mockPositions.length > 0 && (
+        <PortfolioSummary positions={mockPositions} />
       )}
 
       {/* Position Cards - Only when connected */}

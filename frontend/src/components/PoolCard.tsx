@@ -88,7 +88,7 @@ export default function PoolCard({ pool, onDeposit }: PoolCardProps) {
           <p className="font-semibold text-lg">{formatNumber(pool.tvl)}</p>
         </div>
         <div>
-          <p className="text-[#a1a1aa] text-sm mb-1">Est. APR</p>
+          <p className="text-[#a1a1aa] text-sm mb-1">Est. 24h Yield</p>
           <p className={`font-semibold text-lg ${displayApr > 0 ? 'text-[#4ade80]' : 'text-[#71717a]'}`}>
             {displayApr > 0 ? `${displayApr.toFixed(2)}%` : 'N/A'}
           </p>

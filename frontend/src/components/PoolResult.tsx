@@ -116,8 +116,14 @@ export default function PoolResult({
           <span className="font-medium capitalize text-[#e0e8f0]">{pool.dex}</span>
         </div>
         <div className="text-right">
-          <div className="text-sm font-semibold text-[#7ec8e8]">{apr.toFixed(2)}%</div>
-          <div className="text-xs text-[#5a7090]">{tvlFormatted}</div>
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-[#5a7090]">24h Yield</span>
+            <span className="text-sm font-semibold text-[#7ec8e8]">{apr.toFixed(2)}%</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-[#5a7090]">TVL</span>
+            <span className="text-xs text-[#5a7090]">{tvlFormatted}</span>
+          </div>
         </div>
       </button>
     );
@@ -179,7 +185,7 @@ export default function PoolResult({
             {showSparkline && aprHistory.length > 0 && (
               <APRSparkline data={aprHistory} width={60} height={20} showTrend={false} />
             )}
-            <span className="text-xs text-[#5a7090]">24h APR</span>
+            <span className="text-xs text-[#5a7090]">24h Yield</span>
           </div>
         </div>
       </div>

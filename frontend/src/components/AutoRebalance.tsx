@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Toggle from "@/components/Toggle";
+import AnimateHeight from "@/components/AnimateHeight";
 
 interface AutoRebalanceProps {
   enabled: boolean;
@@ -44,14 +45,14 @@ export default function AutoRebalance({
         <Toggle enabled={enabled} onChange={onEnabledChange} />
       </div>
 
-      {showInfo && (
+      <AnimateHeight open={showInfo}>
         <div className="mt-2 p-3 bg-[#0a1520]/60 rounded-lg text-xs text-[#8899aa]">
           Our agent monitors your position 24/7. If the price moves out of range 
           or yield drops below your target, we automatically rebalance to the optimal range.
         </div>
-      )}
+      </AnimateHeight>
 
-      {enabled && (
+      <AnimateHeight open={enabled}>
         <div className="mt-2 flex items-center gap-2">
           <span className="text-xs text-[#5a7090]">Target 24h Yield:</span>
           <select
@@ -66,7 +67,7 @@ export default function AutoRebalance({
             ))}
           </select>
         </div>
-      )}
+      </AnimateHeight>
     </div>
   );
 }

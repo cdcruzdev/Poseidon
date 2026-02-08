@@ -7,8 +7,11 @@ import {
   StrategyConfig,
   PriceFeed,
 } from '../types/index.js';
-import { DexRegistry, RebalanceParams } from '../dex/interface.js';
+import { DexRegistry, RebalanceParams, WalletSigner } from '../dex/interface.js';
 import { YieldCalculator } from './yield-calculator.js';
+import { FeeCollector } from './fee-collector.js';
+import { analyzeMigration, MigrationAnalysis } from './migration-analyzer.js';
+import { LPAggregator } from './aggregator.js';
 
 /**
  * Position Monitor
@@ -27,7 +30,10 @@ export class PositionMonitor {
   private priceFeeds: Map<string, PriceFeed> = new Map();
   private isRunning: boolean = false;
   private checkIntervalMs: number;
-  private wallet: Keypair;
+  private wallet: WalletSigner;
+  private feeCollector: FeeCollector | null = null;
+  private aggregator: LPAggregator | null = null;
+  private solPriceUSD: number = 150; // Default, should be updated externally
 
   // Fee configuration
   private performanceFeeBps: number = 500; // 5% of profits
@@ -35,13 +41,29 @@ export class PositionMonitor {
   constructor(
     connection: Connection,
     registry: DexRegistry,
-    wallet: Keypair,
-    checkIntervalMs: number = 60000 // 1 minute default
+    wallet: WalletSigner,
+    checkIntervalMs: number = 60000, // 1 minute default
+    feeCollector?: FeeCollector
   ) {
     this.connection = connection;
     this.registry = registry;
     this.wallet = wallet;
     this.checkIntervalMs = checkIntervalMs;
+    this.feeCollector = feeCollector || null;
+  }
+
+  /**
+   * Set the LP aggregator for cross-pool migration analysis
+   */
+  setAggregator(aggregator: LPAggregator): void {
+    this.aggregator = aggregator;
+  }
+
+  /**
+   * Update SOL price for migration cost calculations
+   */
+  setSolPrice(priceUSD: number): void {
+    this.solPriceUSD = priceUSD;
   }
 
   /**
@@ -116,6 +138,9 @@ export class PositionMonitor {
           console.log(`Rebalancing position ${id}: ${decision.reason}`);
           await this.executeRebalance(position, decision);
         }
+
+        // Check cross-pool migration opportunities
+        await this.checkMigrationOpportunities(position);
       } catch (error) {
         console.error(`Error checking position ${id}:`, error);
       }
@@ -217,6 +242,29 @@ export class PositionMonitor {
     };
 
     try {
+      // Collect unclaimed fees before rebalancing (so we can take performance fee)
+      if (this.feeCollector) {
+        try {
+          const collectResult = await adapter.collectFees({
+            positionAddress: new PublicKey(position.id),
+            wallet: this.wallet,
+          });
+          if (collectResult.success) {
+            // Calculate total claimed fees in lamports and route through fee collector
+            const claimedLamports = position.unclaimedFeesA.add(position.unclaimedFeesB)
+              .mul(1e9).floor();
+            if (claimedLamports.gt(0)) {
+              const { breakdown } = await this.feeCollector.collectPerformanceFee(
+                BigInt(claimedLamports.toString())
+              );
+              console.log(`[FeeCollector] Performance fee collected on rebalance of ${position.id}`);
+            }
+          }
+        } catch (feeError) {
+          console.warn(`Failed to collect fees before rebalance (continuing anyway):`, feeError);
+        }
+      }
+
       const result = await adapter.rebalance(params);
 
       if (result.success) {
@@ -388,6 +436,53 @@ export class PositionMonitor {
     console.log('REBALANCE:', JSON.stringify(log));
     
     // TODO: Write to notifications file for Telegram alerts
+  }
+
+  /**
+   * Check if migrating to a different pool would be more profitable
+   */
+  private async checkMigrationOpportunities(position: Position): Promise<void> {
+    if (!this.aggregator) return;
+
+    try {
+      // Find alternative pools for the same token pair
+      const altPools = await this.aggregator.findPoolsForPair(
+        position.pool, // We need tokenA/tokenB; use position's pool tokens
+        position.pool  // Simplified — in practice, pass actual token mints
+      );
+
+      // Get current pool info
+      const adapter = this.registry.get(position.dex);
+      const currentPool = await adapter.getPoolInfo(position.pool);
+
+      // Estimate position value in USD (simplified)
+      const positionValueUSD = position.tokenAAmount
+        .add(position.tokenBAmount)
+        .toNumber();
+
+      // Analyze top 3 alternative pools (skip current)
+      const candidates = altPools
+        .filter(p => p.address.toBase58() !== position.pool.toBase58())
+        .slice(0, 3);
+
+      for (const targetPool of candidates) {
+        const analysis = await analyzeMigration({
+          currentPool,
+          targetPool,
+          positionValueUSD,
+          solPriceUSD: this.solPriceUSD,
+        });
+
+        if (analysis.profitable) {
+          console.log(
+            `[Migration] 💡 Position ${position.id}: ${analysis.reason}`
+          );
+        }
+      }
+    } catch (error) {
+      // Migration analysis is advisory — don't break monitoring on failure
+      console.warn(`[Migration] Failed to analyze for position ${position.id}:`, error);
+    }
   }
 
   /**

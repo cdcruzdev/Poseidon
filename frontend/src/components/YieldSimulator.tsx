@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import type { Pool } from "@/lib/api";
+import AnimateHeight from "@/components/AnimateHeight";
 
 interface YieldSimulatorProps {
   pool: Pool | null;
@@ -239,10 +240,10 @@ export default function YieldSimulator({
         </button>
 
         {/* Detailed Breakdown */}
-        {showDetails && (
+        <AnimateHeight open={showDetails}>
           <div className="mt-3 pt-3 border-t border-[#1a3050] space-y-2 text-xs">
             <div className="flex justify-between">
-              <span className="text-[#5a7090]">APR (24h)</span>
+              <span className="text-[#5a7090]">24h Yield</span>
               <span className="text-[#8899aa]">{(pool.apr24h || pool.estimatedApr || 0).toFixed(2)}%</span>
             </div>
             <div className="flex justify-between">
@@ -262,14 +263,14 @@ export default function YieldSimulator({
             <div className="mt-2 p-2 bg-[#0a1520] rounded-lg">
               <div className="text-[#5a7090] mb-1">Assumptions</div>
               <ul className="text-[#5a7090] space-y-0.5 text-[11px]">
-                <li>• APR remains constant (actual may vary)</li>
+                <li>• Yield remains constant (actual may vary)</li>
                 <li>• Daily auto-compounding enabled</li>
                 <li>• No impermanent loss considered</li>
                 <li>• Fees reinvested automatically</li>
               </ul>
             </div>
           </div>
-        )}
+        </AnimateHeight>
       </div>
     </div>
   );

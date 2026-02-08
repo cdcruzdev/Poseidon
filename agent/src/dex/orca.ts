@@ -1,4 +1,5 @@
-import { Connection, PublicKey, Transaction, Keypair, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
+import { sendTransaction } from '../wallet/send-tx.js';
 import Decimal from 'decimal.js';
 import BN from 'bn.js';
 import {
@@ -166,6 +167,7 @@ export class OrcaAdapter implements IDexAdapter {
         volume24h: new Decimal(data.volume?.day || 0),
         apr24h: new Decimal(data.apr || data.feeApr || 0),
         tickSpacing: data.tickSpacing,
+      poolType: 'Whirlpool',
       };
     } catch (error) {
       console.error('Error getting pool info:', error);
@@ -257,10 +259,11 @@ export class OrcaAdapter implements IDexAdapter {
 
       // Build and send transaction
       const builtTx = await tx.build();
-      const signature = await sendAndConfirmTransaction(
+      const signature = await sendTransaction(
         this.connection,
         builtTx.transaction,
-        [params.wallet, ...builtTx.signers]
+        params.wallet,
+        builtTx.signers
       );
 
       return {
@@ -473,6 +476,7 @@ export class OrcaAdapter implements IDexAdapter {
       volume24h: new Decimal(volume24h),
       apr24h: new Decimal(apr24h),
       tickSpacing: pool.tickSpacing,
+      poolType: 'Whirlpool',
     };
   }
 }

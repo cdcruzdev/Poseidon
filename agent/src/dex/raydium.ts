@@ -1,4 +1,5 @@
-import { Connection, PublicKey, Transaction, Keypair, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
+import { sendTransaction } from '../wallet/send-tx.js';
 import Decimal from 'decimal.js';
 import BN from 'bn.js';
 import {
@@ -337,6 +338,7 @@ export class RaydiumAdapter implements IDexAdapter {
       volume24h: new Decimal(pool.day?.volume || pool.volume24h || 0),
       apr24h: new Decimal(pool.day?.apr || pool.apr24h || 0),
       tickSpacing: pool.config?.tickSpacing || pool.ammConfig?.tickSpacing || pool.tickSpacing || 1,
+      poolType: 'CLMM',
     };
   }
 

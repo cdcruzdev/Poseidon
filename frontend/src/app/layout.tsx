@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   title: "Poseidon | LP Aggregator",
   description: "One interface. All DEXs. Best yields. Auto-managed liquidity positions on Solana.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/poseidon-icon.png",
   },
 };
 

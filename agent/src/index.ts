@@ -5,6 +5,8 @@ import { createDefaultRegistry, DexRegistry } from './dex/index.js';
 import { LPAggregator } from './core/aggregator.js';
 import { PositionMonitor } from './core/position-monitor.js';
 import { AgentConfig } from './types/index.js';
+import { AgentWallet } from './wallet/agent-wallet.js';
+import { FeeCollector } from './core/fee-collector.js';
 
 dotenv.config();
 
@@ -52,23 +54,41 @@ async function main() {
     wsEndpoint: config.wsUrl,
   });
 
-  // Load wallet
-  let wallet: Keypair;
-  try {
-    const walletData = fs.readFileSync(config.walletPath, 'utf-8');
-    const secretKey = JSON.parse(walletData);
-    wallet = Keypair.fromSecretKey(new Uint8Array(secretKey));
-    console.log(`Wallet loaded: ${wallet.publicKey.toBase58()}`);
-  } catch (error) {
-    console.error('Failed to load wallet. Creating new one for testing...');
-    wallet = Keypair.generate();
-    console.log(`Generated wallet: ${wallet.publicKey.toBase58()}`);
-    console.log('WARNING: This is a test wallet. Fund it before using on mainnet.');
+  // Load wallet — prefer AgentWallet (server-side signing), fall back to local keypair
+  let wallet: AgentWallet | Keypair;
+  if (process.env.AGENTWALLET_USERNAME && process.env.AGENTWALLET_API_TOKEN) {
+    wallet = AgentWallet.fromEnv();
+    console.log(`AgentWallet connected: ${wallet.publicKey.toBase58()}`);
+    console.log(`  Username: ${process.env.AGENTWALLET_USERNAME}`);
+    console.log('  Signing: server-side via mcpay.tech');
+  } else {
+    // Fallback to local keypair (dev/testing only)
+    try {
+      const walletData = fs.readFileSync(config.walletPath, 'utf-8');
+      const secretKey = JSON.parse(walletData);
+      wallet = Keypair.fromSecretKey(new Uint8Array(secretKey));
+      console.log(`Local wallet loaded: ${wallet.publicKey.toBase58()}`);
+      console.log('  WARNING: Local keypairs are not recommended for production.');
+    } catch (error) {
+      console.error('No AgentWallet configured and no local wallet found.');
+      console.error('Set AGENTWALLET_USERNAME + AGENTWALLET_API_TOKEN + AGENTWALLET_SOLANA_ADDRESS');
+      process.exit(1);
+    }
   }
 
   // Check wallet balance
   const balance = await connection.getBalance(wallet.publicKey);
   console.log(`Balance: ${balance / 1e9} SOL`);
+  console.log('');
+
+  // Initialize fee collector
+  const feeCollector = FeeCollector.fromEnv(connection, wallet);
+  const feeStats = feeCollector.getStats();
+  console.log(`Fee routing:`);
+  console.log(`  Deposit fee: ${feeStats.config.depositFeeBps / 100}%`);
+  console.log(`  Performance fee: ${feeStats.config.performanceFeeBps / 100}%`);
+  console.log(`  Gas reserve: ${feeStats.config.agentGasReserveBps / 100}% of perf fee`);
+  console.log(`  Treasury: ${feeStats.config.treasuryAddress}`);
   console.log('');
 
   // Initialize DEX registry with all supported DEXs
@@ -82,12 +102,13 @@ async function main() {
     aggregator.registerAdapter(adapter);
   }
 
-  // Initialize position monitor
+  // Initialize position monitor with fee collector
   const monitor = new PositionMonitor(
     connection,
     registry,
     wallet,
-    config.priceCheckIntervalMs
+    config.priceCheckIntervalMs,
+    feeCollector
   );
 
   // Handle shutdown gracefully

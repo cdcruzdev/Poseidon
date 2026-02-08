@@ -96,7 +96,7 @@ export default function StatsBar() {
       ),
     },
     {
-      label: "Avg APR",
+      label: "Avg 24h Yield",
       value: "42.3%",
       change: -2.1,
       icon: (

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import type { Pool } from "@/lib/api";
+import AnimateHeight from "@/components/AnimateHeight";
 
 interface ILCalculatorProps {
   pool: Pool | null;
@@ -101,8 +102,8 @@ export default function ILCalculator({ pool, depositValueUSD }: ILCalculatorProp
         </svg>
       </button>
 
-      {showCalculator && calculations && (
-        <div className="p-4 border-t border-[#1a3050]">
+      <AnimateHeight open={showCalculator && !!calculations}>
+        {calculations && <div className="p-4 border-t border-[#1a3050]">
           {/* Info Banner */}
           <div className="bg-[#fbbf24]/10 border border-[#fbbf24]/20 rounded-lg p-3 mb-4">
             <p className="text-xs text-[#fbbf24]">
@@ -113,7 +114,7 @@ export default function ILCalculator({ pool, depositValueUSD }: ILCalculatorProp
 
           {/* Scenarios Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-            {calculations.map((calc) => (
+            {calculations?.map((calc) => (
               <div
                 key={calc.label}
                 className="bg-[#0a1520] rounded-lg p-3 border border-[#1a3050]"
@@ -223,10 +224,10 @@ export default function ILCalculator({ pool, depositValueUSD }: ILCalculatorProp
 
           {/* Bottom note */}
           <div className="mt-3 text-[10px] text-[#5a7090] text-center">
-            * Recovery time assumes constant APR and daily compounding
+            * Recovery time assumes constant yield and daily compounding
           </div>
-        </div>
-      )}
+        </div>}
+      </AnimateHeight>
     </div>
   );
 }

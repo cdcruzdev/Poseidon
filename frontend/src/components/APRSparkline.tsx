@@ -137,7 +137,7 @@ export default function APRSparkline({
       {/* Hover tooltip */}
       <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
         <div className="bg-[#0a1520] border border-[#1a3050] rounded-lg p-2 shadow-xl whitespace-nowrap">
-          <div className="text-xs text-[#5a7090] mb-1">7-Day APR Trend</div>
+          <div className="text-xs text-[#5a7090] mb-1">7-Day Yield Trend</div>
           <div className="flex items-center gap-3 text-xs">
             <div>
               <span className="text-[#5a7090]">Min: </span>

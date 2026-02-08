@@ -1,6 +1,10 @@
 import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
 import Decimal from 'decimal.js';
 import { DexType, PoolInfo, Position, TxResult } from '../types/index.js';
+import { AgentWallet } from '../wallet/agent-wallet.js';
+
+/** Wallet type: either a local Keypair or an AgentWallet */
+export type WalletSigner = Keypair | AgentWallet;
 
 /**
  * DEX Interface
@@ -94,7 +98,7 @@ export interface IDexAdapter {
  */
 export interface CreatePositionParams {
   pool: PublicKey;
-  wallet: Keypair;
+  wallet: WalletSigner;
   
   // Token amounts
   tokenAAmount: Decimal;
@@ -113,7 +117,7 @@ export interface CreatePositionParams {
  */
 export interface ClosePositionParams {
   positionAddress: PublicKey;
-  wallet: Keypair;
+  wallet: WalletSigner;
   
   // Optional: withdraw only a portion
   percentToWithdraw?: number; // 0-100
@@ -127,7 +131,7 @@ export interface ClosePositionParams {
  */
 export interface CollectFeesParams {
   positionAddress: PublicKey;
-  wallet: Keypair;
+  wallet: WalletSigner;
 }
 
 /**
@@ -135,7 +139,7 @@ export interface CollectFeesParams {
  */
 export interface RebalanceParams {
   positionAddress: PublicKey;
-  wallet: Keypair;
+  wallet: WalletSigner;
   
   // New range
   newLowerPrice: Decimal;
