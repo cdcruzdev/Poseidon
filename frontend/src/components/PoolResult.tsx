@@ -46,7 +46,8 @@ export default function PoolResult({
   // Generate mock APR history for sparkline
   const aprHistory = useMemo(() => {
     if (!pool) return [];
-    return generateMockAPRHistory(pool.apr24h || pool.estimatedApr || 0, 7);
+    const y = pool.yield24h ?? (pool.apr24h || pool.estimatedApr || 0) / 365;
+    return generateMockAPRHistory(y, 7);
   }, [pool]);
   if (loading) {
     return (
@@ -81,7 +82,8 @@ export default function PoolResult({
   }
 
   const dexColor = dexColors[pool.dex] || "#5eead4";
-  const apr = pool.apr24h || pool.estimatedApr || 0;
+  const yield24h = pool.yield24h ?? (pool.apr24h || pool.estimatedApr || 0) / 365;
+  const poolTypeLabel = pool.poolType || 'DLMM';
   const tvlFormatted = pool.tvl >= 1_000_000
     ? `$${(pool.tvl / 1_000_000).toFixed(1)}M`
     : `$${(pool.tvl / 1_000).toFixed(0)}K`;
@@ -118,7 +120,7 @@ export default function PoolResult({
         <div className="text-right">
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-[#5a7090]">24h Yield</span>
-            <span className="text-sm font-semibold text-[#7ec8e8]">{apr.toFixed(2)}%</span>
+            <span className="text-sm font-semibold text-[#7ec8e8]">{yield24h.toFixed(3)}%</span>
           </div>
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-[#5a7090]">TVL</span>
@@ -169,7 +171,7 @@ export default function PoolResult({
           <div className="flex items-center gap-2">
             <span className="font-semibold capitalize text-[#e0e8f0]">{pool.dex}</span>
             <span className="text-xs px-2 py-0.5 rounded-md bg-[#1a3050] text-[#7ec8e8]">
-              {pool.poolType || (pool.dex === 'meteora' ? 'DLMM' : pool.dex === 'orca' ? 'Whirlpool' : 'CLMM')}
+              {poolTypeLabel}
             </span>
             <RiskBadge pool={pool} size="sm" />
           </div>
@@ -180,7 +182,7 @@ export default function PoolResult({
 
         {/* APR with Sparkline */}
         <div className="text-right flex flex-col items-end gap-1">
-          <div className="text-xl font-bold text-[#7ec8e8]">{apr.toFixed(2)}%</div>
+          <div className="text-xl font-bold text-[#7ec8e8]">{yield24h.toFixed(3)}%</div>
           <div className="flex items-center gap-2">
             {showSparkline && aprHistory.length > 0 && (
               <APRSparkline data={aprHistory} width={60} height={20} showTrend={false} />

@@ -26,6 +26,7 @@ export interface Pool {
   feeRate: number;
   currentPrice: number;
   apr24h: number;
+  yield24h?: number; // actual 24h yield (apr24h / 365)
   tokenAPrice?: number;
   tokenBPrice?: number;
   estimatedApr?: number;

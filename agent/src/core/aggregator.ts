@@ -20,6 +20,7 @@ export interface SimplePoolInfo {
   feeRate: number;
   currentPrice: number;
   apr24h: number;
+  yield24h: number; // apr24h / 365 — actual 24h yield percentage
 }
 
 /**
@@ -106,6 +107,7 @@ export class LPAggregator {
       feeRate: (pool.fee || 0) / 10000, // Convert bps to decimal
       currentPrice: pool.currentPrice instanceof Decimal ? pool.currentPrice.toNumber() : Number(pool.currentPrice),
       apr24h: pool.apr24h instanceof Decimal ? pool.apr24h.toNumber() : Number(pool.apr24h || 0),
+      yield24h: (pool.apr24h instanceof Decimal ? pool.apr24h.toNumber() : Number(pool.apr24h || 0)) / 365,
     };
   }
 
@@ -139,6 +141,7 @@ export class LPAggregator {
     return scored.slice(0, limit).map(s => ({
       ...s.pool,
       apr24h: s.estimatedApr,
+      yield24h: s.estimatedApr / 365,
     }));
   }
 
