@@ -169,7 +169,7 @@ export default function PoolResult({
           <div className="flex items-center gap-2">
             <span className="font-semibold capitalize text-[#e0e8f0]">{pool.dex}</span>
             <span className="text-xs px-2 py-0.5 rounded-md bg-[#1a3050] text-[#7ec8e8]">
-              DLMM
+              {pool.poolType || (pool.dex === 'meteora' ? 'DLMM' : pool.dex === 'orca' ? 'Whirlpool' : 'CLMM')}
             </span>
             <RiskBadge pool={pool} size="sm" />
           </div>

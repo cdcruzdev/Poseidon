@@ -30,6 +30,7 @@ export interface Pool {
   tokenBPrice?: number;
   estimatedApr?: number;
   rank?: number;
+  poolType?: 'DLMM' | 'DAMM_V2' | 'Whirlpool' | 'CLMM' | 'unknown';
 }
 
 export interface CompareResult {

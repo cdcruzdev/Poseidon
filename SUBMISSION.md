@@ -99,7 +99,7 @@ DeFi / Infrastructure
 
 | Type | URL |
 |------|-----|
-| GitHub | github.com/cdcruzdev/lp-vault |
+| GitHub | github.com/cdcruzdev/Poseidon |
 | Demo Video | [to be added] |
 | Live Demo | [to be added] |
 

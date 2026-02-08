@@ -92,7 +92,7 @@ Gas costs are deducted automatically from earned fees.
 
 ```bash
 # Clone
-git clone https://github.com/cdcruzdev/lp-vault
+git clone https://github.com/cdcruzdev/Poseidon
 cd lp-vault/agent
 
 # Install
