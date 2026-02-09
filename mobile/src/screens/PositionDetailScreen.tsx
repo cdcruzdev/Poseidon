@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
 import { StatusDot } from '../components/StatusDot';
@@ -18,10 +19,10 @@ const typeColors: Record<string, string> = {
   alert: colors.warning,
 };
 
-const typeIcons: Record<string, string> = {
-  rebalance: '🔄',
-  fee_collection: '💰',
-  alert: '⚠️',
+const typeLabels: Record<string, string> = {
+  rebalance: 'R',
+  fee_collection: 'F',
+  alert: '!',
 };
 
 export function PositionDetailScreen({ route }: any) {
@@ -36,7 +37,8 @@ export function PositionDetailScreen({ route }: any) {
   const rangePercent = ((currentPrice - lowerBound) / (upperBound - lowerBound)) * 100;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <LinearGradient colors={['#0a1520', '#0d2137', '#0a1520']} style={styles.container}>
+    <ScrollView contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -117,7 +119,7 @@ export function PositionDetailScreen({ route }: any) {
       {/* Actions */}
       <View style={styles.actions}>
         <TouchableOpacity style={styles.claimBtn} activeOpacity={0.8}>
-          <Text style={styles.claimText}>💰 Claim Fees</Text>
+          <Text style={styles.claimText}>Claim Fees</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.closeBtn} activeOpacity={0.8}>
           <Text style={styles.closeText}>Close Position</Text>
@@ -129,7 +131,7 @@ export function PositionDetailScreen({ route }: any) {
       {MOCK_ACTIVITY.map(a => (
         <Card key={a.id}>
           <View style={styles.activityRow}>
-            <Text style={styles.activityIcon}>{typeIcons[a.type] || '📋'}</Text>
+            <Text style={styles.activityIcon}>{typeLabels[a.type] || '?'}</Text>
             <View style={styles.activityContent}>
               <Text style={[styles.activityDesc, { color: typeColors[a.type] || colors.text.secondary }]}>
                 {a.description}
@@ -140,6 +142,7 @@ export function PositionDetailScreen({ route }: any) {
         </Card>
       ))}
     </ScrollView>
+    </LinearGradient>
   );
 }
 
@@ -173,7 +176,7 @@ const styles = StyleSheet.create({
   closeText: { color: colors.danger, fontSize: 15, fontWeight: '700' },
   activityTitle: { color: colors.text.muted, fontSize: 12, fontWeight: '700', letterSpacing: 2, marginBottom: 12 },
   activityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  activityIcon: { fontSize: 20, marginTop: 2 },
+  activityIcon: { fontSize: 14, fontWeight: '800', color: colors.accent, marginTop: 2 },
   activityContent: { flex: 1 },
   activityDesc: { fontSize: 14, fontWeight: '500' },
   activityTime: { color: colors.text.faint, fontSize: 11, marginTop: 2 },

@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
 import { StatusDot } from '../components/StatusDot';
+import { ConnectWalletButton } from '../components/ConnectWalletButton';
+import { useWallet } from '../contexts/WalletContext';
 
 // Mock positions data (would come from wallet/API in production)
 const MOCK_POSITIONS = [
@@ -16,7 +18,7 @@ const MOCK_POSITIONS = [
 ];
 
 export function HomeScreen({ navigation }: any) {
-  const [wallet, setWallet] = useState<string | null>(null);
+  const { publicKey, connected } = useWallet();
   const [refreshing, setRefreshing] = useState(false);
 
   const totalValue = MOCK_POSITIONS.reduce((s, p) => s + p.value, 0);
@@ -26,11 +28,6 @@ export function HomeScreen({ navigation }: any) {
     setRefreshing(true);
     await new Promise(r => setTimeout(r, 1000));
     setRefreshing(false);
-  };
-
-  const connectWallet = () => {
-    // Mock wallet connection
-    setWallet('7xKX...3nFp');
   };
 
   return (
@@ -50,12 +47,8 @@ export function HomeScreen({ navigation }: any) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>🔱 POSEIDON</Text>
-          <TouchableOpacity style={styles.walletBtn} onPress={connectWallet}>
-            <Text style={styles.walletText}>
-              {wallet ? `🟢 ${wallet}` : '🔗 Connect'}
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.logo}>POSEIDON</Text>
+          <ConnectWalletButton />
         </View>
 
         {/* Portfolio Card */}
@@ -82,7 +75,7 @@ export function HomeScreen({ navigation }: any) {
 
         {/* CTA */}
         <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.8}>
-          <Text style={styles.ctaText}>💧 Deposit Liquidity</Text>
+          <Text style={styles.ctaText}>Deposit Liquidity</Text>
         </TouchableOpacity>
 
         {/* Positions */}

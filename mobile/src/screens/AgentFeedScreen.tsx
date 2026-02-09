@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
 import { api, AgentAction } from '../api/client';
@@ -15,12 +16,12 @@ const typeColors: Record<string, string> = {
   withdraw: colors.danger,
 };
 
-const typeIcons: Record<string, string> = {
-  rebalance: '🔄',
-  fee_collection: '💰',
-  alert: '⚠️',
-  deposit: '💧',
-  withdraw: '📤',
+const typeLabels: Record<string, string> = {
+  rebalance: 'R',
+  fee_collection: 'F',
+  alert: '!',
+  deposit: 'D',
+  withdraw: 'W',
 };
 
 const MOCK_FEED: AgentAction[] = [
@@ -67,8 +68,8 @@ export function AgentFeedScreen() {
   const items = feed || MOCK_FEED;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🤖 AGENT FEED</Text>
+    <LinearGradient colors={['#0a1520', '#0d2137', '#0a1520']} style={styles.container}>
+      <Text style={styles.title}>AGENT FEED</Text>
       <Text style={styles.subtitle}>Real-time actions from your Poseidon agent</Text>
 
       <FlatList
@@ -84,7 +85,7 @@ export function AgentFeedScreen() {
             {index < items.length - 1 && <View style={styles.timelineLine} />}
 
             <View style={[styles.iconCircle, { backgroundColor: (typeColors[item.type] || colors.text.muted) + '20' }]}>
-              <Text style={styles.icon}>{typeIcons[item.type] || '📋'}</Text>
+              <Text style={styles.icon}>{typeLabels[item.type] || '?'}</Text>
             </View>
 
             <Card style={styles.feedCard}>
@@ -97,7 +98,7 @@ export function AgentFeedScreen() {
           </View>
         )}
       />
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
   iconCircle: {
     width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12,
   },
-  icon: { fontSize: 18 },
+  icon: { fontSize: 14, fontWeight: '800', color: colors.accent },
   feedCard: { flex: 1 },
   feedType: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
   feedDesc: { color: colors.text.secondary, fontSize: 14, lineHeight: 20 },

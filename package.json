@@ -13,6 +13,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@arcium-hq/client": "^0.8.0",
+    "@coral-xyz/anchor": "^0.32.1",
     "@solana/web3.js": "^1.98.4"
   }
 }

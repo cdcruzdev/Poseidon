@@ -15,6 +15,7 @@ const Stack = createStackNavigator();
 function HomeStack() {
   return (
     <Stack.Navigator
+      id="HomeStack"
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg.deep, elevation: 0, shadowOpacity: 0 },
         headerTintColor: colors.accent,
@@ -35,16 +36,17 @@ function HomeStack() {
   );
 }
 
-const tabIcons: Record<string, string> = {
-  Home: '🏠',
-  Discover: '🔍',
-  Agent: '🤖',
+const tabLabels: Record<string, string> = {
+  Home: 'H',
+  Discover: 'D',
+  Agent: 'A',
 };
 
 export function AppNavigator() {
   return (
     <NavigationContainer>
       <Tab.Navigator
+        id="MainTabs"
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarStyle: {
@@ -59,7 +61,7 @@ export function AppNavigator() {
           tabBarInactiveTintColor: colors.text.faint,
           tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
           tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 22 }}>{tabIcons[route.name]}</Text>
+            <Text style={{ fontSize: 16, fontWeight: '800', color }}>{tabLabels[route.name]}</Text>
           ),
         })}
       >

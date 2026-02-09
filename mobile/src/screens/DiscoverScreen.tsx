@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, RefreshControl,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
 import { LoadingState, ErrorState } from '../components/LoadingState';
 import { api, Pool } from '../api/client';
 import { useApi } from '../hooks/useApi';
 
-const DEX_EMOJI: Record<string, string> = {
-  Meteora: '🌊', Orca: '🐋', Raydium: '☀️',
+const DEX_LABEL: Record<string, string> = {
+  Meteora: 'M', Orca: 'O', Raydium: 'R',
 };
 
 // Mock data fallback
@@ -47,11 +48,10 @@ export function DiscoverScreen() {
   });
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🔱 DISCOVER POOLS</Text>
+    <LinearGradient colors={['#0a1520', '#0d2137', '#0a1520']} style={styles.container}>
+      <Text style={styles.title}>DISCOVER POOLS</Text>
 
       <View style={styles.searchWrap}>
-        <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
           placeholder="Search by token or DEX..."
@@ -74,7 +74,7 @@ export function DiscoverScreen() {
               <Card>
                 <View style={styles.poolHeader}>
                   <View style={styles.poolLeft}>
-                    <Text style={styles.poolEmoji}>{DEX_EMOJI[item.dex] || '💎'}</Text>
+                    <View style={styles.dexBadge}><Text style={styles.dexBadgeText}>{DEX_LABEL[item.dex] || '?'}</Text></View>
                     <View>
                       <Text style={styles.poolPair}>{item.tokenA}/{item.tokenB}</Text>
                       <Text style={styles.poolDex}>{item.dex}</Text>
@@ -113,7 +113,7 @@ export function DiscoverScreen() {
                       </View>
                     </View>
                     <TouchableOpacity style={styles.depositBtn} activeOpacity={0.8}>
-                      <Text style={styles.depositText}>💧 Deposit</Text>
+                      <Text style={styles.depositText}>Deposit</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -122,7 +122,7 @@ export function DiscoverScreen() {
           )}
         />
       )}
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -134,11 +134,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.elevated, borderRadius: 12, marginHorizontal: 20, marginBottom: 16,
     paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border.subtle,
   },
-  searchIcon: { fontSize: 16, marginRight: 8 },
   searchInput: { flex: 1, color: colors.text.primary, fontSize: 15, paddingVertical: 14 },
   poolHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   poolLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  poolEmoji: { fontSize: 28 },
+  dexBadge: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.accent + '20', justifyContent: 'center', alignItems: 'center' },
+  dexBadgeText: { color: colors.accent, fontSize: 16, fontWeight: '800' },
   poolPair: { color: colors.text.primary, fontSize: 17, fontWeight: '700' },
   poolDex: { color: colors.text.faint, fontSize: 12 },
   poolRight: { alignItems: 'flex-end' },
