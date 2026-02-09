@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import AutoRebalance from "@/components/AutoRebalance";
+
 export interface Position {
   id: string;
   token0: { symbol: string; logo: string };
@@ -42,6 +45,8 @@ const rangeLabels: Record<string, string> = {
 export default function PositionCard({ position }: { position: Position }) {
   const pnlColor = position.pnl >= 0 ? "#4ade80" : "#f87171";
   const pnlSign = position.pnl >= 0 ? "+" : "";
+  const [rebalanceEnabled, setRebalanceEnabled] = useState(false);
+  const [targetYield, setTargetYield] = useState("0.10");
 
   return (
     <div className="bg-[#0a1520]/80 backdrop-blur-sm rounded-xl border border-[#1a3050] p-4">
@@ -120,6 +125,15 @@ export default function PositionCard({ position }: { position: Position }) {
         <button className="flex-1 py-2 px-3 rounded-lg bg-[#1a3050] text-[#8899aa] text-sm font-medium hover:bg-[#2a4060] transition-colors">
           Close Position
         </button>
+      </div>
+
+      <div className="pt-3 mt-3 border-t border-[#1a3050]">
+        <AutoRebalance
+          enabled={rebalanceEnabled}
+          onEnabledChange={setRebalanceEnabled}
+          targetYield={targetYield}
+          onTargetYieldChange={setTargetYield}
+        />
       </div>
     </div>
   );

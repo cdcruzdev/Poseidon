@@ -8,3 +8,6 @@ out/
 .turbo/
 credentials.json
 wallet.json
+
+target/
+programs/*/target/
