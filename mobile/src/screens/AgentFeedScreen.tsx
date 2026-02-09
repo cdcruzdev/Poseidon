@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, RefreshControl, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
 import { api, AgentAction } from '../api/client';
@@ -16,12 +17,12 @@ const typeColors: Record<string, string> = {
   withdraw: colors.danger,
 };
 
-const typeLabels: Record<string, string> = {
-  rebalance: 'R',
-  fee_collection: 'F',
-  alert: '!',
-  deposit: 'D',
-  withdraw: 'W',
+const typeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
+  rebalance: 'swap-horizontal',
+  fee_collection: 'cash-outline',
+  alert: 'alert-circle-outline',
+  deposit: 'arrow-down-circle-outline',
+  withdraw: 'arrow-up-circle-outline',
 };
 
 const MOCK_FEED: AgentAction[] = [
@@ -69,7 +70,7 @@ export function AgentFeedScreen() {
 
   return (
     <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
-    <LinearGradient colors={['rgba(10,24,37,0.85)', 'rgba(10,24,37,0.92)', 'rgba(10,21,32,0.98)']} style={styles.container}>
+    <LinearGradient colors={['rgba(10,24,37,0.55)', 'rgba(10,24,37,0.70)', 'rgba(10,21,32,0.85)']} style={styles.container}>
       <Text style={styles.title}>AGENT FEED</Text>
       <Text style={styles.subtitle}>Real-time actions from your Poseidon agent</Text>
 
@@ -86,7 +87,7 @@ export function AgentFeedScreen() {
             {index < items.length - 1 && <View style={styles.timelineLine} />}
 
             <View style={[styles.iconCircle, { backgroundColor: (typeColors[item.type] || colors.text.muted) + '20' }]}>
-              <Text style={styles.icon}>{typeLabels[item.type] || '?'}</Text>
+              <Ionicons name={typeIcons[item.type] || 'ellipse-outline'} size={18} color={typeColors[item.type] || colors.accent} />
             </View>
 
             <Card style={styles.feedCard}>

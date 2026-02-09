@@ -38,7 +38,7 @@ export function PositionDetailScreen({ route }: any) {
 
   return (
     <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
-    <LinearGradient colors={['rgba(10,24,37,0.85)', 'rgba(10,24,37,0.92)', 'rgba(10,21,32,0.98)']} style={styles.container}>
+    <LinearGradient colors={['rgba(10,24,37,0.55)', 'rgba(10,24,37,0.70)', 'rgba(10,21,32,0.85)']} style={styles.container}>
     <ScrollView contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>

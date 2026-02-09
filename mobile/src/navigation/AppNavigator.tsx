@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
-import { Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { HomeScreen } from '../screens/HomeScreen';
 import { DiscoverScreen } from '../screens/DiscoverScreen';
@@ -36,10 +36,16 @@ function HomeStack() {
   );
 }
 
-const tabLabels: Record<string, string> = {
-  Home: 'H',
-  Discover: 'D',
-  Agent: 'A',
+const tabIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
+  Home: 'home-outline',
+  Discover: 'compass-outline',
+  Agent: 'pulse-outline',
+};
+
+const tabIconsActive: Record<string, keyof typeof Ionicons.glyphMap> = {
+  Home: 'home',
+  Discover: 'compass',
+  Agent: 'pulse',
 };
 
 export function AppNavigator() {
@@ -60,8 +66,12 @@ export function AppNavigator() {
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.text.faint,
           tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 16, fontWeight: '800', color }}>{tabLabels[route.name]}</Text>
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? tabIconsActive[route.name] : tabIcons[route.name]}
+              size={22}
+              color={color}
+            />
           ),
         })}
       >
