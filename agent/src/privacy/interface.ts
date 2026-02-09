@@ -187,58 +187,25 @@ export class MockPrivacyProvider implements IPrivacyProvider {
   }
 }
 
-/**
- * Arcium Privacy Provider (Placeholder)
- * 
- * This will use real Arcium MPC for encryption.
- * Requires Arcium SDK and deployed MXE program.
- */
-export class ArciumPrivacyProvider implements IPrivacyProvider {
-  readonly name = 'Arcium MPC Privacy';
-  readonly isRealPrivacy = true;
-
-  async initialize(): Promise<void> {
-    // TODO: Initialize Arcium client
-    // - Load MXE program ID
-    // - Connect to Arcium cluster
-    // - Set up encryption keys
-    throw new Error('Arcium integration not yet implemented');
-  }
-
-  async encryptPosition(position: DecryptedPosition): Promise<EncryptedPosition> {
-    throw new Error('Arcium integration not yet implemented');
-  }
-
-  async decryptPosition(
-    encrypted: EncryptedPosition,
-    ownerKey: Uint8Array
-  ): Promise<DecryptedPosition> {
-    throw new Error('Arcium integration not yet implemented');
-  }
-
-  async encrypt(value: string | number | Decimal): Promise<string> {
-    throw new Error('Arcium integration not yet implemented');
-  }
-
-  async decrypt(encrypted: string, key: Uint8Array): Promise<string> {
-    throw new Error('Arcium integration not yet implemented');
-  }
-
-  async generateKey(): Promise<Uint8Array> {
-    throw new Error('Arcium integration not yet implemented');
-  }
-
-  canDecrypt(encrypted: EncryptedPosition, wallet: PublicKey): boolean {
-    throw new Error('Arcium integration not yet implemented');
-  }
-}
+// ArciumPrivacyProvider is in arcium/src/arcium-provider.ts
+// Use createPrivacyProvider(true) to load it dynamically
 
 /**
  * Privacy Provider Factory
+ * 
+ * When useRealPrivacy is true, uses Arcium SDK (x25519 + RescueCipher).
+ * When false, uses mock provider for development/demo.
  */
-export function createPrivacyProvider(useRealPrivacy: boolean = false): IPrivacyProvider {
+export async function createPrivacyProvider(useRealPrivacy: boolean = false): Promise<IPrivacyProvider> {
   if (useRealPrivacy) {
-    return new ArciumPrivacyProvider();
+    // Dynamic import to avoid rootDir issues — arcium/ is a separate module
+    const modulePath = '../../../arcium/src/arcium-provider';
+    const mod = await (Function('p', 'return import(p)')(modulePath) as Promise<any>);
+    const provider = new mod.ArciumPrivacyProvider();
+    await provider.initialize();
+    return provider;
   }
-  return new MockPrivacyProvider();
+  const provider = new MockPrivacyProvider();
+  await provider.initialize();
+  return provider;
 }

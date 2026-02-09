@@ -1,10 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { healthCheck } from "@/lib/api";
 
 export default function AgentHealthBar() {
   const [pulse, setPulse] = useState(true);
   const [elapsed, setElapsed] = useState(0);
+  const [isOnline, setIsOnline] = useState(true);
+
+  // Ping the real API to check if agent is online
+  useEffect(() => {
+    const check = async () => {
+      const ok = await healthCheck();
+      setIsOnline(ok);
+    };
+    check();
+    const interval = setInterval(check, 30000); // check every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   // Simulate uptime counter
   useEffect(() => {
@@ -35,21 +48,23 @@ export default function AgentHealthBar() {
       <div className="flex items-center gap-1.5">
         <div className="relative">
           <div
-            className={`w-2 h-2 rounded-full bg-[#4ade80] transition-transform duration-200 ${
+            className={`w-2 h-2 rounded-full ${isOnline ? "bg-[#4ade80]" : "bg-[#f87171]"} transition-transform duration-200 ${
               pulse ? "scale-100" : "scale-150 opacity-50"
             }`}
           />
-          {pulse && (
+          {pulse && isOnline && (
             <div className="absolute inset-0 w-2 h-2 rounded-full bg-[#4ade80] animate-ping opacity-30" />
           )}
         </div>
-        <span className="text-xs font-semibold text-[#4ade80]">LIVE</span>
+        <span className={`text-xs font-semibold ${isOnline ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+          {isOnline ? "LIVE" : "OFFLINE"}
+        </span>
       </div>
 
       <div className="w-px h-4 bg-[#1a3050]" />
 
       {/* Status */}
-      <span className="text-xs text-[#8899aa]">Agent Online</span>
+      <span className="text-xs text-[#8899aa]">{isOnline ? "Agent Online" : "Agent Offline"}</span>
 
       <div className="w-px h-4 bg-[#1a3050]" />
 

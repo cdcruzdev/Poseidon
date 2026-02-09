@@ -1,0 +1,16 @@
+[arcium]
+cluster_offset = 456
+recovery_set_size = 4
+
+[programs.localnet]
+poseidon_privacy = "11111111111111111111111111111111"
+
+[programs.devnet]
+poseidon_privacy = "CqPbSB5EhenJenf6k2jKAZepeS4MoMghkEv6HpRUQFf9"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
