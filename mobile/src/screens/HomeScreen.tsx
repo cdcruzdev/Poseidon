@@ -36,10 +36,6 @@ export function HomeScreen({ navigation }: any) {
       style={styles.bg}
       resizeMode="cover"
     >
-      <LinearGradient
-        colors={['rgba(10,24,37,0.55)', 'rgba(10,24,37,0.70)', 'rgba(10,21,32,0.85)']}
-        style={StyleSheet.absoluteFill}
-      />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}

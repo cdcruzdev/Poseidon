@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, RefreshControl, ImageBackground,
+  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, RefreshControl, ImageBackground, Image, ImageSourcePropType,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
 import { LoadingState, ErrorState } from '../components/LoadingState';
 import { api, Pool } from '../api/client';
 import { useApi } from '../hooks/useApi';
 
-const DEX_COLORS: Record<string, string> = {
-  Meteora: '#e84142', Orca: '#ffb347', Raydium: '#6c5ce7',
+const DEX_LOGOS: Record<string, ImageSourcePropType> = {
+  Meteora: require('../../assets/meteora-logo.png'),
+  Orca: require('../../assets/orca-logo.png'),
+  Raydium: require('../../assets/raydium-logo.png'),
 };
 
 // Mock data fallback
@@ -49,7 +50,7 @@ export function DiscoverScreen() {
 
   return (
     <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
-    <LinearGradient colors={['rgba(10,24,37,0.55)', 'rgba(10,24,37,0.70)', 'rgba(10,21,32,0.85)']} style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.title}>DISCOVER POOLS</Text>
 
       <View style={styles.searchWrap}>
@@ -75,8 +76,12 @@ export function DiscoverScreen() {
               <Card>
                 <View style={styles.poolHeader}>
                   <View style={styles.poolLeft}>
-                    <View style={[styles.dexBadge, { backgroundColor: (DEX_COLORS[item.dex] || colors.accent) + '25' }]}>
-                      <Text style={[styles.dexBadgeText, { color: DEX_COLORS[item.dex] || colors.accent }]}>{item.dex.charAt(0)}</Text>
+                    <View style={styles.dexBadge}>
+                      {DEX_LOGOS[item.dex] ? (
+                        <Image source={DEX_LOGOS[item.dex]} style={styles.dexLogo} />
+                      ) : (
+                        <Text style={styles.dexBadgeText}>{item.dex.charAt(0)}</Text>
+                      )}
                     </View>
                     <View>
                       <Text style={styles.poolPair}>{item.tokenA}/{item.tokenB}</Text>
@@ -125,7 +130,7 @@ export function DiscoverScreen() {
           )}
         />
       )}
-    </LinearGradient>
+    </View>
     </ImageBackground>
   );
 }
@@ -142,8 +147,9 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, color: colors.text.primary, fontSize: 15, paddingVertical: 14 },
   poolHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   poolLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dexBadge: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  dexBadgeText: { fontSize: 16, fontWeight: '800' },
+  dexBadge: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  dexLogo: { width: 36, height: 36, borderRadius: 18 },
+  dexBadgeText: { fontSize: 16, fontWeight: '800', color: colors.accent },
   poolPair: { color: colors.text.primary, fontSize: 17, fontWeight: '700' },
   poolDex: { color: colors.text.faint, fontSize: 12 },
   poolRight: { alignItems: 'flex-end' },

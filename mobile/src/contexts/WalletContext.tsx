@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import { Alert } from 'react-native';
 import { PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
 import {
   transact,
@@ -65,11 +66,17 @@ export function WalletProvider({ children }: WalletProviderProps) {
         };
       });
       // Set state AFTER transact resolves to avoid lost updates during app switch
-      const pubkey = new PublicKey(result.address);
-      setPublicKey(pubkey);
-      setAuthToken(result.authToken);
-    } catch (err) {
+      if (result && result.address) {
+        const pubkey = new PublicKey(result.address);
+        setPublicKey(pubkey);
+        setAuthToken(result.authToken);
+        Alert.alert('Connected', `Wallet: ${result.address.slice(0, 8)}...`);
+      } else {
+        Alert.alert('Error', 'No address returned from wallet');
+      }
+    } catch (err: any) {
       console.error('Wallet connect error:', err);
+      Alert.alert('Wallet Error', err?.message || String(err));
     } finally {
       setConnecting(false);
     }
