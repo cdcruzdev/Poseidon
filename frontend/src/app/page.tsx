@@ -36,6 +36,9 @@ export default function Home() {
               </div>
             </section>
 
+            {/* My Positions Section */}
+            <MyPositions />
+
             {/* Agent Intelligence Section - Side by Side */}
             <section className="mb-16 grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
               <AgentActivityLog />
@@ -46,9 +49,6 @@ export default function Home() {
             <section className="mb-16 max-w-2xl mx-auto">
               <AgentPerformance />
             </section>
-
-            {/* My Positions Section */}
-            <MyPositions />
 
           </div>
         </main>
