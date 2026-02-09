@@ -11,7 +11,8 @@
     "api": "tsx src/api/server.ts",
     "api:dev": "tsx watch src/api/server.ts",
     "test": "vitest",
-    "test:adapters": "tsx src/test/verify-adapters.ts"
+    "test:adapters": "tsx src/test/verify-adapters.ts",
+    "test:migration": "tsx src/test/verify-migration.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",

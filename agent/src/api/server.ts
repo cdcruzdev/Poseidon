@@ -9,6 +9,8 @@ import Decimal from 'decimal.js';
 import { createDefaultRegistry, DexRegistry } from '../dex/index.js';
 import { getPriceOracle } from '../core/price-oracle.js';
 import { FeeCollector } from '../core/fee-collector.js';
+import { analyzeMigration } from '../core/migration-analyzer.js';
+import { LPAggregator } from '../core/aggregator.js';
 import { PoolInfo } from '../types/index.js';
 
 const PORT = process.env.API_PORT || 3001;
@@ -534,6 +536,84 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       return;
     }
 
+    // Migration analysis — find better pools for a current position
+    if (path === '/api/migrate/analyze') {
+      const query = parseQuery(url);
+      const poolAddress = query.pool;
+      const dex = query.dex;
+      const positionValue = parseFloat(query.value || '1000');
+
+      if (!poolAddress || !dex) {
+        jsonResponse(res, { success: false, error: 'Missing pool or dex parameter' }, 400);
+        return;
+      }
+
+      const reg = await initializeRegistry();
+      const adapter = reg.getAll().find(a => a.dexType === dex);
+      if (!adapter) {
+        jsonResponse(res, { success: false, error: `Unknown dex: ${dex}` }, 400);
+        return;
+      }
+
+      // Get current pool info
+      const currentPool = await adapter.getPoolInfo(new PublicKey(poolAddress));
+
+      // Find alternative pools across all DEXs
+      const aggregator = new LPAggregator();
+      for (const a of reg.getAll()) {
+        aggregator.registerAdapter(a);
+      }
+      const altPools = await aggregator.findPoolsForPair(currentPool.tokenA, currentPool.tokenB);
+
+      // Get SOL price for cost calculations
+      const solPrice = await priceOracle.getPrice('SOL');
+
+      // Analyze each alternative
+      const analyses = [];
+      const candidates = altPools
+        .filter(p => p.address.toBase58() !== poolAddress)
+        .slice(0, 10);
+
+      for (const targetPool of candidates) {
+        const analysis = await analyzeMigration({
+          currentPool,
+          targetPool,
+          positionValueUSD: positionValue,
+          solPriceUSD: solPrice,
+        });
+        analyses.push({
+          ...analysis,
+          targetDex: targetPool.dex,
+          targetPoolType: targetPool.poolType,
+          targetTvl: targetPool.tvl instanceof Decimal ? targetPool.tvl.toNumber() : Number(targetPool.tvl),
+          targetApr: targetPool.apr24h instanceof Decimal ? targetPool.apr24h.toNumber() : Number(targetPool.apr24h),
+        });
+      }
+
+      // Sort: profitable first, then by net benefit
+      analyses.sort((a, b) => {
+        if (a.profitable && !b.profitable) return -1;
+        if (!a.profitable && b.profitable) return 1;
+        return b.netBenefitPerDay - a.netBenefitPerDay;
+      });
+
+      jsonResponse(res, {
+        success: true,
+        data: {
+          currentPool: {
+            address: poolAddress,
+            dex,
+            apr: currentPool.apr24h instanceof Decimal ? currentPool.apr24h.toNumber() : Number(currentPool.apr24h),
+            tvl: currentPool.tvl instanceof Decimal ? currentPool.tvl.toNumber() : Number(currentPool.tvl),
+          },
+          positionValueUSD: positionValue,
+          migrations: analyses,
+          bestMigration: analyses.find(a => a.profitable) || null,
+        },
+      });
+      return;
+    }
+
     // 404 for unknown routes
     jsonResponse(res, { success: false, error: 'Not found' }, 404);
 
@@ -563,6 +643,7 @@ export async function startApiServer(): Promise<http.Server> {
     console.log('  GET /api/compare?tokenA=SOL&tokenB=USDC');
     console.log('  GET /api/fees');
     console.log('  GET /api/fees?depositAmount=1000000000  (calculate fee for 1 SOL)');
+    console.log('  GET /api/migrate/analyze?pool=<addr>&dex=<dex>&value=1000');
     console.log('  GET /api/status');
     console.log('');
   });

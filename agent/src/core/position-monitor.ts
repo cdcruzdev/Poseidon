@@ -1,6 +1,8 @@
 import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import Decimal from 'decimal.js';
 import {
+  DexType,
+  PoolInfo,
   Position,
   RebalanceDecision,
   RebalanceTrigger,
@@ -439,31 +441,37 @@ export class PositionMonitor {
   }
 
   /**
-   * Check if migrating to a different pool would be more profitable
+   * Check if migrating to a different pool would be more profitable.
+   * If a profitable migration is found, execute it automatically.
    */
   private async checkMigrationOpportunities(position: Position): Promise<void> {
     if (!this.aggregator) return;
 
     try {
-      // Find alternative pools for the same token pair
-      const altPools = await this.aggregator.findPoolsForPair(
-        position.pool, // We need tokenA/tokenB; use position's pool tokens
-        position.pool  // Simplified — in practice, pass actual token mints
-      );
+      // Get current pool info to extract token mints
+      const currentAdapter = this.registry.get(position.dex);
+      const currentPool = await currentAdapter.getPoolInfo(position.pool);
 
-      // Get current pool info
-      const adapter = this.registry.get(position.dex);
-      const currentPool = await adapter.getPoolInfo(position.pool);
+      // Find alternative pools for the same token pair across all DEXs
+      const altPools = await this.aggregator.findPoolsForPair(
+        currentPool.tokenA,
+        currentPool.tokenB
+      );
 
       // Estimate position value in USD (simplified)
       const positionValueUSD = position.tokenAAmount
         .add(position.tokenBAmount)
         .toNumber();
 
-      // Analyze top 3 alternative pools (skip current)
+      // Skip if position is too small to justify migration analysis
+      if (positionValueUSD < 10) return;
+
+      // Analyze top 5 alternative pools (skip current)
       const candidates = altPools
         .filter(p => p.address.toBase58() !== position.pool.toBase58())
-        .slice(0, 3);
+        .slice(0, 5);
+
+      let bestMigration: MigrationAnalysis | null = null;
 
       for (const targetPool of candidates) {
         const analysis = await analyzeMigration({
@@ -474,14 +482,136 @@ export class PositionMonitor {
         });
 
         if (analysis.profitable) {
-          console.log(
-            `[Migration] 💡 Position ${position.id}: ${analysis.reason}`
-          );
+          if (!bestMigration || analysis.netBenefitPerDay > bestMigration.netBenefitPerDay) {
+            bestMigration = analysis;
+          }
         }
+      }
+
+      if (bestMigration) {
+        console.log(
+          `[Migration] 💡 Position ${position.id}: ${bestMigration.reason}`
+        );
+        await this.executeMigration(position, bestMigration, currentPool);
       }
     } catch (error) {
       // Migration analysis is advisory — don't break monitoring on failure
       console.warn(`[Migration] Failed to analyze for position ${position.id}:`, error);
+    }
+  }
+
+  /**
+   * Execute a cross-pool migration: close current position, open on target pool/DEX
+   */
+  private async executeMigration(
+    position: Position,
+    migration: MigrationAnalysis,
+    currentPool: PoolInfo
+  ): Promise<void> {
+    const targetPoolAddress = new PublicKey(migration.targetPoolAddress);
+    const targetDex = migration.targetDex as DexType;
+
+    console.log(`[Migration] Executing migration for position ${position.id}`);
+    console.log(`[Migration]   From: ${position.dex} pool ${position.pool.toBase58().slice(0, 8)}…`);
+    console.log(`[Migration]   To:   ${targetDex} pool ${migration.targetPoolAddress.slice(0, 8)}…`);
+    console.log(`[Migration]   Expected net benefit: $${migration.netBenefitPerDay}/day`);
+    console.log(`[Migration]   Break-even: ${migration.breakEvenDays} days`);
+
+    try {
+      const sourceAdapter = this.registry.get(position.dex);
+      const targetAdapter = this.registry.get(targetDex);
+
+      // Step 1: Collect unclaimed fees before closing
+      if (this.feeCollector) {
+        try {
+          const collectResult = await sourceAdapter.collectFees({
+            positionAddress: new PublicKey(position.id),
+            wallet: this.wallet,
+          });
+          if (collectResult.success) {
+            const claimedLamports = position.unclaimedFeesA.add(position.unclaimedFeesB)
+              .mul(1e9).floor();
+            if (claimedLamports.gt(0)) {
+              await this.feeCollector.collectPerformanceFee(
+                BigInt(claimedLamports.toString())
+              );
+              console.log(`[Migration] Performance fee collected before migration`);
+            }
+          }
+        } catch (feeError) {
+          console.warn(`[Migration] Fee collection failed (continuing):`, feeError);
+        }
+      }
+
+      // Step 2: Close the current position
+      const closeResult = await sourceAdapter.closePosition({
+        positionAddress: new PublicKey(position.id),
+        wallet: this.wallet,
+        slippageBps: position.strategy.maxSlippageBps,
+      });
+
+      if (!closeResult.success) {
+        console.error(`[Migration] Failed to close position: ${closeResult.error}`);
+        return;
+      }
+      console.log(`[Migration] Position closed: ${closeResult.signature}`);
+
+      // Step 3: Get target pool info for price range
+      const targetPool = await targetAdapter.getPoolInfo(targetPoolAddress);
+      const targetPrice = targetPool.currentPrice;
+
+      // Step 4: Calculate range for target pool (maintain same width ratio)
+      const oldRangeWidth = position.upperPrice.sub(position.lowerPrice);
+      const oldMidPrice = position.lowerPrice.add(position.upperPrice).div(2);
+      const rangeRatio = oldRangeWidth.div(oldMidPrice);
+      const halfWidth = targetPrice.mul(rangeRatio).div(2);
+      const newLower = targetPrice.sub(halfWidth);
+      const newUpper = targetPrice.add(halfWidth);
+
+      // Step 5: Open new position on target pool
+      const createResult = await targetAdapter.createPosition({
+        pool: targetPoolAddress,
+        wallet: this.wallet,
+        tokenAAmount: position.tokenAAmount,
+        tokenBAmount: position.tokenBAmount,
+        lowerPrice: newLower,
+        upperPrice: newUpper,
+        slippageBps: position.strategy.maxSlippageBps,
+      });
+
+      if (!createResult.success) {
+        console.error(`[Migration] Failed to create new position: ${createResult.error}`);
+        // TODO: Recovery — funds are in wallet, need manual intervention or retry
+        return;
+      }
+
+      console.log(`[Migration] ✅ Migration complete: ${createResult.signature}`);
+
+      // Step 6: Update tracked position
+      if (createResult.position) {
+        this.positions.delete(position.id);
+        this.addPosition(createResult.position);
+      }
+
+      // Log migration event
+      console.log('MIGRATION:', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        oldPositionId: position.id,
+        newPositionId: createResult.position?.id,
+        fromDex: position.dex,
+        toDex: targetDex,
+        fromPool: position.pool.toBase58(),
+        toPool: migration.targetPoolAddress,
+        netBenefitPerDay: migration.netBenefitPerDay,
+        breakEvenDays: migration.breakEvenDays,
+        closeSignature: closeResult.signature,
+        createSignature: createResult.signature,
+      }));
+
+    } catch (error) {
+      console.error(`[Migration] Execution failed:`, error);
+      // Position might be in an intermediate state — log for manual recovery
+      console.error(`[Migration] ⚠️ Position ${position.id} may need manual recovery`);
     }
   }
 
