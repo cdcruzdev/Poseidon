@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
 import {
   transact,
   Web3MobileWallet,
 } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const APP_IDENTITY = {
   name: 'Poseidon',
@@ -13,6 +14,9 @@ const APP_IDENTITY = {
 };
 
 const CLUSTER = 'devnet';
+
+const STORAGE_KEY_PUBKEY = '@poseidon_wallet_pubkey';
+const STORAGE_KEY_AUTH = '@poseidon_wallet_auth';
 
 interface WalletContextType {
   publicKey: PublicKey | null;
@@ -51,6 +55,33 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
   const connected = publicKey !== null;
 
+  // Restore wallet state from AsyncStorage on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const savedPubkey = await AsyncStorage.getItem(STORAGE_KEY_PUBKEY);
+        const savedAuth = await AsyncStorage.getItem(STORAGE_KEY_AUTH);
+        if (savedPubkey) {
+          const pk = new PublicKey(savedPubkey);
+          setPublicKey(pk);
+          setAuthToken(savedAuth);
+          console.log('[Wallet] Restored from storage:', savedPubkey.slice(0, 8));
+        }
+      } catch (err) {
+        console.error('[Wallet] Failed to restore from storage:', err);
+      }
+    })();
+  }, []);
+
+  // Debug: log/alert when publicKey changes
+  useEffect(() => {
+    if (publicKey) {
+      console.log('[Wallet] publicKey changed:', publicKey.toBase58());
+    } else {
+      console.log('[Wallet] publicKey cleared');
+    }
+  }, [publicKey]);
+
   const connect = useCallback(async () => {
     if (connecting) return;
     setConnecting(true);
@@ -65,8 +96,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
           authToken: authResult.auth_token,
         };
       });
-      // Set state AFTER transact resolves to avoid lost updates during app switch
+      // Persist to AsyncStorage BEFORE setting state (survives app kill)
       if (result && result.address) {
+        await AsyncStorage.setItem(STORAGE_KEY_PUBKEY, result.address);
+        if (result.authToken) {
+          await AsyncStorage.setItem(STORAGE_KEY_AUTH, result.authToken);
+        }
         const pubkey = new PublicKey(result.address);
         setPublicKey(pubkey);
         setAuthToken(result.authToken);
@@ -85,6 +120,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const disconnect = useCallback(async () => {
     if (!authToken) {
       setPublicKey(null);
+      await AsyncStorage.multiRemove([STORAGE_KEY_PUBKEY, STORAGE_KEY_AUTH]);
       return;
     }
     try {
@@ -96,6 +132,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     } finally {
       setPublicKey(null);
       setAuthToken(null);
+      await AsyncStorage.multiRemove([STORAGE_KEY_PUBKEY, STORAGE_KEY_AUTH]);
     }
   }, [authToken]);
 
