@@ -14,6 +14,7 @@ import { YieldCalculator } from './yield-calculator.js';
 import { FeeCollector } from './fee-collector.js';
 import { analyzeMigration, MigrationAnalysis } from './migration-analyzer.js';
 import { LPAggregator } from './aggregator.js';
+import { isRebalanceEnabled, findRebalanceConfigPDA } from './rebalance-registry.js';
 
 /**
  * Position Monitor
@@ -36,6 +37,7 @@ export class PositionMonitor {
   private feeCollector: FeeCollector | null = null;
   private aggregator: LPAggregator | null = null;
   private solPriceUSD: number = 150; // Default, should be updated externally
+  private rebalanceProgramId: PublicKey | null = null; // Set to enable on-chain opt-in checks
 
   // Fee configuration
   private performanceFeeBps: number = 500; // 5% of profits
@@ -137,6 +139,20 @@ export class PositionMonitor {
         const decision = await this.shouldRebalance(position, currentPrice);
 
         if (decision.shouldRebalance) {
+          // Check on-chain opt-in before rebalancing
+          if (this.rebalanceProgramId && position.owner) {
+            const optIn = await isRebalanceEnabled(
+              this.connection,
+              this.rebalanceProgramId,
+              new PublicKey(position.owner),
+              id
+            );
+            if (!optIn || !optIn.enabled) {
+              console.log(`Skipping rebalance for ${id}: user not opted in`);
+              continue;
+            }
+          }
+
           console.log(`Rebalancing position ${id}: ${decision.reason}`);
           await this.executeRebalance(position, decision);
         }
