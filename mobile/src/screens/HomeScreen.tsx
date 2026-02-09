@@ -32,7 +32,7 @@ export function HomeScreen({ navigation }: any) {
 
   return (
     <ImageBackground
-      source={require('../../assets/poseidon_bg.jpg')}
+      source={require('../../assets/poseidon-bg.jpg')}
       style={styles.bg}
       resizeMode="cover"
     >

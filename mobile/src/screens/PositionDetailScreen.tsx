@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
@@ -37,7 +37,8 @@ export function PositionDetailScreen({ route }: any) {
   const rangePercent = ((currentPrice - lowerBound) / (upperBound - lowerBound)) * 100;
 
   return (
-    <LinearGradient colors={['#0a1520', '#0d2137', '#0a1520']} style={styles.container}>
+    <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
+    <LinearGradient colors={['rgba(10,24,37,0.85)', 'rgba(10,24,37,0.92)', 'rgba(10,21,32,0.98)']} style={styles.container}>
     <ScrollView contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
@@ -143,11 +144,13 @@ export function PositionDetailScreen({ route }: any) {
       ))}
     </ScrollView>
     </LinearGradient>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.deep },
+  bg: { flex: 1 },
+  container: { flex: 1 },
   content: { padding: 20, paddingTop: 20, paddingBottom: 40 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   headerLeft: {},

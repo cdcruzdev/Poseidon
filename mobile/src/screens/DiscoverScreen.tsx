@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, RefreshControl,
+  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, RefreshControl, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
@@ -48,7 +48,8 @@ export function DiscoverScreen() {
   });
 
   return (
-    <LinearGradient colors={['#0a1520', '#0d2137', '#0a1520']} style={styles.container}>
+    <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
+    <LinearGradient colors={['rgba(10,24,37,0.85)', 'rgba(10,24,37,0.92)', 'rgba(10,21,32,0.98)']} style={styles.container}>
       <Text style={styles.title}>DISCOVER POOLS</Text>
 
       <View style={styles.searchWrap}>
@@ -123,11 +124,13 @@ export function DiscoverScreen() {
         />
       )}
     </LinearGradient>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.deep, paddingTop: 60 },
+  bg: { flex: 1 },
+  container: { flex: 1, paddingTop: 60 },
   title: { fontSize: 18, fontWeight: '900', color: colors.accent, letterSpacing: 2, paddingHorizontal: 20, marginBottom: 16 },
   searchWrap: {
     flexDirection: 'row', alignItems: 'center',

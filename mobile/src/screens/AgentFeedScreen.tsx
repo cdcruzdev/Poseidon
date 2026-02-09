@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, RefreshControl,
+  View, Text, StyleSheet, FlatList, RefreshControl, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
@@ -68,7 +68,8 @@ export function AgentFeedScreen() {
   const items = feed || MOCK_FEED;
 
   return (
-    <LinearGradient colors={['#0a1520', '#0d2137', '#0a1520']} style={styles.container}>
+    <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
+    <LinearGradient colors={['rgba(10,24,37,0.85)', 'rgba(10,24,37,0.92)', 'rgba(10,21,32,0.98)']} style={styles.container}>
       <Text style={styles.title}>AGENT FEED</Text>
       <Text style={styles.subtitle}>Real-time actions from your Poseidon agent</Text>
 
@@ -99,11 +100,13 @@ export function AgentFeedScreen() {
         )}
       />
     </LinearGradient>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg.deep, paddingTop: 60 },
+  bg: { flex: 1 },
+  container: { flex: 1, paddingTop: 60 },
   title: { fontSize: 18, fontWeight: '900', color: colors.accent, letterSpacing: 2, paddingHorizontal: 20 },
   subtitle: { color: colors.text.faint, fontSize: 13, paddingHorizontal: 20, marginBottom: 20, marginTop: 4 },
   feedItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4, position: 'relative' },
