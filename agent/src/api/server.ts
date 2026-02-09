@@ -12,6 +12,9 @@ import { FeeCollector } from '../core/fee-collector.js';
 import { analyzeMigration } from '../core/migration-analyzer.js';
 import { LPAggregator } from '../core/aggregator.js';
 import { PoolInfo } from '../types/index.js';
+import { AgentActivityTracker } from '../core/activity-tracker.js';
+import { ReasoningLogger } from '../core/reasoning-logger.js';
+import { PositionMonitor } from '../core/position-monitor.js';
 
 const PORT = process.env.API_PORT || 3001;
 const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -31,11 +34,30 @@ const TOKENS: Record<string, string> = {
 // Initialize components
 let registry: DexRegistry | null = null;
 let feeCollector: FeeCollector | null = null;
+let positionMonitor: PositionMonitor | null = null;
 const priceOracle = getPriceOracle();
+const activityTracker = AgentActivityTracker.getInstance();
+const reasoningLogger = ReasoningLogger.getInstance();
+const agentStartTime = Date.now();
 
 /** Set the fee collector instance (called from index.ts) */
 export function setFeeCollector(fc: FeeCollector): void {
   feeCollector = fc;
+}
+
+/** Set the position monitor instance (called from index.ts) */
+export function setPositionMonitor(pm: PositionMonitor): void {
+  positionMonitor = pm;
+}
+
+/** Get the activity tracker singleton */
+export function getActivityTracker(): AgentActivityTracker {
+  return activityTracker;
+}
+
+/** Get the reasoning logger singleton */
+export function getReasoningLogger(): ReasoningLogger {
+  return reasoningLogger;
 }
 
 interface ApiResponse {
@@ -614,6 +636,84 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       return;
     }
 
+    // Agent activity log
+    if (path === '/api/agent/activity') {
+      const activities = activityTracker.getAll();
+      jsonResponse(res, { success: true, data: { activities } });
+      return;
+    }
+
+    // Agent reasoning / decisions
+    if (path === '/api/agent/reasoning') {
+      const decisions = reasoningLogger.getAll();
+      jsonResponse(res, { success: true, data: { decisions } });
+      return;
+    }
+
+    // Agent performance metrics
+    if (path === '/api/agent/performance') {
+      const uptimeMs = Date.now() - agentStartTime;
+      const positions = positionMonitor ? positionMonitor.getPositions() : [];
+      const feeStats = feeCollector ? feeCollector.getStats() : null;
+
+      jsonResponse(res, {
+        success: true,
+        data: {
+          uptime: uptimeMs,
+          uptimeFormatted: `${Math.floor(uptimeMs / 3600000)}h ${Math.floor((uptimeMs % 3600000) / 60000)}m`,
+          positionsMonitored: positions.length,
+          rebalancesExecuted: feeStats?.totalPerformanceFeesCollected || 0,
+          feesCollected: {
+            deposit: feeStats?.totalDepositFeesCollected || 0,
+            performance: feeStats?.totalPerformanceFeesCollected || 0,
+          },
+          totalValueManaged: 0, // TODO: sum position values when positions are live
+        },
+      });
+      return;
+    }
+
+    // Positions for a wallet
+    if (path === '/api/positions') {
+      const query = parseQuery(url);
+      const wallet = query.wallet;
+
+      if (!wallet) {
+        jsonResponse(res, { success: false, error: 'Missing wallet parameter' }, 400);
+        return;
+      }
+
+      let walletPubkey: PublicKey;
+      try {
+        walletPubkey = new PublicKey(wallet);
+      } catch {
+        jsonResponse(res, { success: false, error: 'Invalid wallet address' }, 400);
+        return;
+      }
+
+      const reg = await initializeRegistry();
+      const adapters = reg.getAll();
+
+      const results = await Promise.allSettled(
+        adapters.map(async (adapter) => {
+          try {
+            const positions = await adapter.getPositions(walletPubkey);
+            return positions;
+          } catch (error: any) {
+            console.warn(`[API] Failed to fetch positions from ${adapter.name}:`, error.message);
+            return [];
+          }
+        })
+      );
+
+      const allPositions = results
+        .filter((r): r is PromiseFulfilledResult<any[]> => r.status === 'fulfilled')
+        .flatMap(r => r.value);
+
+      jsonResponse(res, { success: true, data: { positions: allPositions } });
+      return;
+    }
+
     // 404 for unknown routes
     jsonResponse(res, { success: false, error: 'Not found' }, 404);
 
@@ -645,6 +745,10 @@ export async function startApiServer(): Promise<http.Server> {
     console.log('  GET /api/fees?depositAmount=1000000000  (calculate fee for 1 SOL)');
     console.log('  GET /api/migrate/analyze?pool=<addr>&dex=<dex>&value=1000');
     console.log('  GET /api/status');
+    console.log('  GET /api/agent/activity');
+    console.log('  GET /api/agent/reasoning');
+    console.log('  GET /api/agent/performance');
+    console.log('  GET /api/positions?wallet=<address>');
     console.log('');
   });
 
