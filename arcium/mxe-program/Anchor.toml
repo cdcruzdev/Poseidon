@@ -14,7 +14,7 @@ poseidon_privacy = "CqPbSB5EhenJenf6k2jKAZepeS4MoMghkEv6HpRUQFf9"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
