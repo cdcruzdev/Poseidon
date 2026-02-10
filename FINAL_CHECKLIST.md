@@ -31,8 +31,15 @@
 - [ ] **Upload videos** to YouTube (unlisted) or direct upload to Colosseum
 - [ ] **Submit via Colosseum** before Feb 12 12:00 PM EST
 
+## Nico Did Overnight (Feb 9-10) ✅
+- [x] Redesigned mobile HomeScreen as deposit flow (token selectors, amount, toggles)
+- [x] Added Positions tab (wallet-gated, empty states)
+- [x] Removed ALL mock data from mobile app (Discover, AgentFeed, Home)
+- [x] Added proper empty states everywhere (no wallet, no data)
+- [x] Pushed to GitHub
+
 ## Nice-to-Have (if time)
-- [ ] Deploy frontend to Vercel for live demo link
+- [ ] Deploy frontend to Vercel for live demo link (`npx vercel` from frontend/)
 - [ ] Add OG image / social preview to repo
 - [ ] Screenshot gallery for submission
 
