@@ -5,6 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { HomeScreen } from '../screens/HomeScreen';
+import { PositionsScreen } from '../screens/PositionsScreen';
 import { DiscoverScreen } from '../screens/DiscoverScreen';
 import { AgentFeedScreen } from '../screens/AgentFeedScreen';
 import { PositionDetailScreen } from '../screens/PositionDetailScreen';
@@ -24,6 +25,22 @@ function HomeStack() {
       }}
     >
       <Stack.Screen name="HomeMain" component={HomeScreen} options={{ headerShown: false }} />
+    </Stack.Navigator>
+  );
+}
+
+function PositionsStack() {
+  return (
+    <Stack.Navigator
+      id="PositionsStack"
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.bg.deep, elevation: 0, shadowOpacity: 0 },
+        headerTintColor: colors.accent,
+        headerTitleStyle: { fontWeight: '700' },
+        cardStyle: { backgroundColor: colors.bg.deep },
+      }}
+    >
+      <Stack.Screen name="PositionsMain" component={PositionsScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="PositionDetail"
         component={PositionDetailScreen}
@@ -38,12 +55,14 @@ function HomeStack() {
 
 const tabIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
   Home: 'home-outline',
+  Positions: 'layers-outline',
   Discover: 'compass-outline',
   Agent: 'pulse-outline',
 };
 
 const tabIconsActive: Record<string, keyof typeof Ionicons.glyphMap> = {
   Home: 'home',
+  Positions: 'layers',
   Discover: 'compass',
   Agent: 'pulse',
 };
@@ -76,6 +95,7 @@ export function AppNavigator() {
         })}
       >
         <Tab.Screen name="Home" component={HomeStack} />
+        <Tab.Screen name="Positions" component={PositionsStack} />
         <Tab.Screen name="Discover" component={DiscoverScreen} />
         <Tab.Screen name="Agent" component={AgentFeedScreen} />
       </Tab.Navigator>

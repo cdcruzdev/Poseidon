@@ -25,16 +25,7 @@ const typeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
   withdraw: 'arrow-up-circle-outline',
 };
 
-const MOCK_FEED: AgentAction[] = [
-  { id: '1', type: 'rebalance', description: 'Rebalanced SOL/USDC position to $95.20 - $105.80', timestamp: '2025-02-09T10:30:00Z' },
-  { id: '2', type: 'fee_collection', description: 'Collected $4.20 fees from SOL/USDC', timestamp: '2025-02-09T10:15:00Z' },
-  { id: '3', type: 'alert', description: 'SOL/USDT position approaching range boundary', timestamp: '2025-02-09T09:45:00Z' },
-  { id: '4', type: 'rebalance', description: 'Rebalanced JUP/SOL position to $0.82 - $1.15', timestamp: '2025-02-09T09:00:00Z' },
-  { id: '5', type: 'fee_collection', description: 'Collected $1.80 fees from JUP/SOL', timestamp: '2025-02-09T08:30:00Z' },
-  { id: '6', type: 'rebalance', description: 'Rebalanced SOL/USDC position to $94.50 - $106.20', timestamp: '2025-02-09T07:15:00Z' },
-  { id: '7', type: 'fee_collection', description: 'Collected $3.10 fees from SOL/USDT', timestamp: '2025-02-09T06:00:00Z' },
-  { id: '8', type: 'alert', description: 'High volatility detected for BONK/SOL', timestamp: '2025-02-09T04:30:00Z' },
-];
+// No mock data — fetch from API only
 
 function formatTime(ts: string): string {
   try {
@@ -52,11 +43,7 @@ function formatTime(ts: string): string {
 
 export function AgentFeedScreen() {
   const { data: feed, loading, refresh } = useApi(async () => {
-    try {
-      return await api.fetchAgentActivity();
-    } catch {
-      return MOCK_FEED;
-    }
+    return await api.fetchAgentActivity();
   });
 
   const [refreshing, setRefreshing] = useState(false);
@@ -66,13 +53,23 @@ export function AgentFeedScreen() {
     setRefreshing(false);
   };
 
-  const items = feed || MOCK_FEED;
+  const items = feed || [];
 
   return (
     <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
     <View style={styles.container}>
       <Text style={styles.title}>AGENT FEED</Text>
       <Text style={styles.subtitle}>Real-time actions from your Poseidon agent</Text>
+
+      {items.length === 0 && !loading && (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 100 }}>
+          <Ionicons name="pulse-outline" size={48} color={colors.text.faint} />
+          <Text style={{ color: colors.text.primary, fontSize: 18, fontWeight: '700', marginTop: 16 }}>No Activity Yet</Text>
+          <Text style={{ color: colors.text.muted, fontSize: 14, marginTop: 8, textAlign: 'center', paddingHorizontal: 40 }}>
+            Agent actions will appear here once you have active positions
+          </Text>
+        </View>
+      )}
 
       <FlatList
         data={items}

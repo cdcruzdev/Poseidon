@@ -14,14 +14,7 @@ const DEX_LOGOS: Record<string, ImageSourcePropType> = {
   Raydium: require('../../assets/raydium-logo.png'),
 };
 
-// Mock data fallback
-const MOCK_POOLS: Pool[] = [
-  { id: '1', tokenA: 'SOL', tokenB: 'USDC', dex: 'Meteora', yield24h: 45.2, tvl: 12500000, volume24h: 3200000, score: 92, feeTier: 0.25 },
-  { id: '2', tokenA: 'SOL', tokenB: 'USDT', dex: 'Orca', yield24h: 38.7, tvl: 8700000, volume24h: 2100000, score: 87, feeTier: 0.30 },
-  { id: '3', tokenA: 'JUP', tokenB: 'SOL', dex: 'Raydium', yield24h: 62.1, tvl: 4300000, volume24h: 1800000, score: 78, feeTier: 0.50 },
-  { id: '4', tokenA: 'BONK', tokenB: 'SOL', dex: 'Meteora', yield24h: 120.5, tvl: 2100000, volume24h: 980000, score: 65, feeTier: 1.00 },
-  { id: '5', tokenA: 'WIF', tokenB: 'USDC', dex: 'Orca', yield24h: 85.3, tvl: 1500000, volume24h: 620000, score: 71, feeTier: 0.50 },
-];
+// No mock data — fetch from API only
 
 function formatNum(n: number): string {
   if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
@@ -33,16 +26,11 @@ export function DiscoverScreen() {
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Try API, fall back to mock
   const { data: pools, loading, error, refresh } = useApi(async () => {
-    try {
-      return await api.fetchPools();
-    } catch {
-      return MOCK_POOLS;
-    }
+    return await api.fetchPools();
   });
 
-  const filtered = (pools || MOCK_POOLS).filter(p => {
+  const filtered = (pools || []).filter(p => {
     if (!search) return true;
     const s = search.toUpperCase();
     return p.tokenA.includes(s) || p.tokenB.includes(s) || p.dex.toUpperCase().includes(s);

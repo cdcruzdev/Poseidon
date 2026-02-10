@@ -86,16 +86,27 @@ export function WalletProvider({ children }: WalletProviderProps) {
     if (connecting) return;
     setConnecting(true);
     try {
-      const result = await transact(async (wallet: Web3MobileWallet) => {
+      console.log('[Wallet] Starting transact()...');
+      const transactPromise = transact(async (wallet: Web3MobileWallet) => {
+        console.log('[Wallet] Inside transact callback, calling authorize...');
         const authResult = await wallet.authorize({
           identity: APP_IDENTITY,
           cluster: CLUSTER,
         });
+        console.log('[Wallet] authorize returned:', authResult.accounts[0]?.address?.slice(0, 8));
         return {
           address: authResult.accounts[0].address,
           authToken: authResult.auth_token,
         };
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(
+          'Wallet connection timed out. Make sure you have a Solana wallet app (like Phantom) installed and try again.'
+        )), 15000)
+      );
+
+      const result = await Promise.race([transactPromise, timeoutPromise]);
       // Persist to AsyncStorage BEFORE setting state (survives app kill)
       if (result && result.address) {
         await AsyncStorage.setItem(STORAGE_KEY_PUBKEY, result.address);

@@ -1,33 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ImageBackground, RefreshControl, FlatList,
+  ImageBackground, TextInput, ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
-import { StatusDot } from '../components/StatusDot';
 import { ConnectWalletButton } from '../components/ConnectWalletButton';
 import { useWallet } from '../contexts/WalletContext';
+import { api, Pool } from '../api/client';
 
-// Mock positions data (would come from wallet/API in production)
-const MOCK_POSITIONS = [
-  { id: '1', pair: 'SOL/USDC', value: 2450.80, pnl: 5.2, status: 'in_range' as const, dex: 'Meteora' },
-  { id: '2', pair: 'SOL/USDT', value: 1200.00, pnl: -1.8, status: 'out_of_range' as const, dex: 'Orca' },
-  { id: '3', pair: 'JUP/SOL', value: 890.50, pnl: 12.3, status: 'in_range' as const, dex: 'Raydium' },
+const POPULAR_PAIRS = [
+  { tokenA: 'SOL', tokenB: 'USDC' },
+  { tokenA: 'SOL', tokenB: 'USDT' },
+  { tokenA: 'JUP', tokenB: 'SOL' },
+  { tokenA: 'BONK', tokenB: 'SOL' },
 ];
 
+function formatNum(n: number): string {
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
+  return `$${n.toFixed(0)}`;
+}
+
 export function HomeScreen({ navigation }: any) {
-  const { publicKey, connected } = useWallet();
-  const [refreshing, setRefreshing] = useState(false);
+  const { connected } = useWallet();
+  const [tokenA, setTokenA] = useState('SOL');
+  const [tokenB, setTokenB] = useState('USDC');
+  const [amount, setAmount] = useState('');
+  const [pools, setPools] = useState<Pool[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [autoRebalance, setAutoRebalance] = useState(true);
+  const [privacy, setPrivacy] = useState(false);
 
-  const totalValue = MOCK_POSITIONS.reduce((s, p) => s + p.value, 0);
-  const avgPnl = MOCK_POSITIONS.reduce((s, p) => s + p.pnl, 0) / MOCK_POSITIONS.length;
+  const fetchPools = async () => {
+    setLoading(true);
+    setSearched(true);
+    try {
+      const results = await api.fetchPools(tokenA, tokenB);
+      setPools(results);
+    } catch {
+      // API not available — show empty state
+      setPools([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setRefreshing(false);
+  // Auto-fetch on pair change
+  useEffect(() => {
+    if (tokenA && tokenB && tokenA !== tokenB) {
+      fetchPools();
+    }
+  }, [tokenA, tokenB]);
+
+  const selectPair = (a: string, b: string) => {
+    setTokenA(a);
+    setTokenB(b);
   };
 
   return (
@@ -36,71 +66,160 @@ export function HomeScreen({ navigation }: any) {
       style={styles.bg}
       resizeMode="cover"
     >
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
-      >
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.logo}>POSEIDON</Text>
           <ConnectWalletButton />
         </View>
 
-        {/* Portfolio Card */}
-        <Card style={styles.portfolioCard}>
-          <Text style={styles.portfolioLabel}>Total Portfolio Value</Text>
-          <Text style={styles.portfolioValue}>${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</Text>
-          <View style={styles.portfolioRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>24h PnL</Text>
-              <Text style={[styles.statValue, { color: avgPnl >= 0 ? colors.success : colors.danger }]}>
-                {avgPnl >= 0 ? '+' : ''}{avgPnl.toFixed(1)}%
+        {/* Tagline */}
+        <Text style={styles.tagline}>Find the best yields across Solana DEXs</Text>
+
+        {/* Token Pair Selector */}
+        <Card style={styles.depositCard}>
+          <Text style={styles.cardTitle}>DEPOSIT LIQUIDITY</Text>
+
+          <View style={styles.tokenRow}>
+            <View style={styles.tokenInput}>
+              <Text style={styles.inputLabel}>Token A</Text>
+              <TextInput
+                style={styles.tokenField}
+                value={tokenA}
+                onChangeText={setTokenA}
+                placeholderTextColor={colors.text.faint}
+                autoCapitalize="characters"
+              />
+            </View>
+            <Ionicons name="swap-horizontal" size={20} color={colors.text.faint} style={styles.swapIcon} />
+            <View style={styles.tokenInput}>
+              <Text style={styles.inputLabel}>Token B</Text>
+              <TextInput
+                style={styles.tokenField}
+                value={tokenB}
+                onChangeText={setTokenB}
+                placeholderTextColor={colors.text.faint}
+                autoCapitalize="characters"
+              />
+            </View>
+          </View>
+
+          {/* Quick Pairs */}
+          <View style={styles.quickPairs}>
+            {POPULAR_PAIRS.map((pair) => (
+              <TouchableOpacity
+                key={`${pair.tokenA}-${pair.tokenB}`}
+                style={[
+                  styles.pairChip,
+                  tokenA === pair.tokenA && tokenB === pair.tokenB && styles.pairChipActive,
+                ]}
+                onPress={() => selectPair(pair.tokenA, pair.tokenB)}
+              >
+                <Text style={[
+                  styles.pairChipText,
+                  tokenA === pair.tokenA && tokenB === pair.tokenB && styles.pairChipTextActive,
+                ]}>
+                  {pair.tokenA}/{pair.tokenB}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Amount */}
+          <View style={styles.amountRow}>
+            <Text style={styles.inputLabel}>Amount (USD)</Text>
+            <TextInput
+              style={styles.amountField}
+              value={amount}
+              onChangeText={setAmount}
+              placeholder="1,000"
+              placeholderTextColor={colors.text.faint}
+              keyboardType="numeric"
+            />
+          </View>
+
+          {/* Toggles */}
+          <View style={styles.toggleRow}>
+            <TouchableOpacity
+              style={[styles.toggle, autoRebalance && styles.toggleActive]}
+              onPress={() => setAutoRebalance(!autoRebalance)}
+            >
+              <Ionicons
+                name={autoRebalance ? 'checkmark-circle' : 'ellipse-outline'}
+                size={18}
+                color={autoRebalance ? colors.accent : colors.text.faint}
+              />
+              <Text style={[styles.toggleText, autoRebalance && styles.toggleTextActive]}>
+                Auto-Rebalance
               </Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>Fees Earned</Text>
-              <Text style={[styles.statValue, { color: colors.success }]}>$34.20</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statLabel}>Positions</Text>
-              <Text style={styles.statValue}>{MOCK_POSITIONS.length}</Text>
-            </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.toggle, privacy && styles.toggleActive]}
+              onPress={() => setPrivacy(!privacy)}
+            >
+              <Ionicons
+                name={privacy ? 'shield-checkmark' : 'shield-outline'}
+                size={18}
+                color={privacy ? colors.accent : colors.text.faint}
+              />
+              <Text style={[styles.toggleText, privacy && styles.toggleTextActive]}>
+                Privacy
+              </Text>
+            </TouchableOpacity>
           </View>
         </Card>
 
-        {/* CTA */}
-        <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.8}>
-          <Text style={styles.ctaText}>Deposit Liquidity</Text>
-        </TouchableOpacity>
-
-        {/* Positions */}
-        <Text style={styles.sectionTitle}>YOUR POSITIONS</Text>
-        <FlatList
-          horizontal
-          data={MOCK_POSITIONS}
-          keyExtractor={item => item.id}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingRight: 16 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('PositionDetail', { position: item })}
-            >
-              <Card style={styles.positionCard}>
-                <View style={styles.positionHeader}>
-                  <Text style={styles.positionPair}>{item.pair}</Text>
-                  <StatusDot status={item.status} />
+        {/* Pool Results */}
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={styles.loadingText}>Scanning DEXs...</Text>
+          </View>
+        ) : searched && pools.length > 0 ? (
+          <>
+            <Text style={styles.sectionTitle}>BEST POOLS FOR {tokenA}/{tokenB}</Text>
+            {pools.map((pool) => (
+              <Card key={pool.id} style={styles.poolCard}>
+                <View style={styles.poolHeader}>
+                  <View>
+                    <Text style={styles.poolDex}>{pool.dex}</Text>
+                    <Text style={styles.poolPair}>{pool.tokenA}/{pool.tokenB}</Text>
+                  </View>
+                  <View style={styles.poolRight}>
+                    <Text style={styles.poolYield}>{pool.yield24h.toFixed(1)}% APY</Text>
+                    <View style={[styles.scoreBadge, { backgroundColor: pool.score >= 80 ? colors.success + '30' : colors.warning + '30' }]}>
+                      <Text style={[styles.scoreText, { color: pool.score >= 80 ? colors.success : colors.warning }]}>
+                        Score: {pool.score}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-                <Text style={styles.positionDex}>{item.dex}</Text>
-                <Text style={styles.positionValue}>${item.value.toFixed(2)}</Text>
-                <Text style={[styles.positionPnl, { color: item.pnl >= 0 ? colors.success : colors.danger }]}>
-                  {item.pnl >= 0 ? '↑' : '↓'} {Math.abs(item.pnl)}%
-                </Text>
+                <View style={styles.poolStats}>
+                  <Text style={styles.poolStat}>TVL {formatNum(pool.tvl)}</Text>
+                  <Text style={styles.poolStat}>Vol {formatNum(pool.volume24h)}</Text>
+                  <Text style={styles.poolStat}>Fee {pool.feeTier}%</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.depositBtn, !connected && styles.depositBtnDisabled]}
+                  activeOpacity={0.8}
+                  disabled={!connected}
+                >
+                  <Text style={styles.depositBtnText}>
+                    {connected ? 'Deposit' : 'Connect Wallet to Deposit'}
+                  </Text>
+                </TouchableOpacity>
               </Card>
-            </TouchableOpacity>
-          )}
-        />
+            ))}
+          </>
+        ) : searched && pools.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <Ionicons name="search-outline" size={32} color={colors.text.faint} />
+            <Text style={styles.emptyText}>
+              {loading ? 'Scanning...' : 'No pools found. Make sure the agent API is running.'}
+            </Text>
+          </Card>
+        ) : null}
       </ScrollView>
     </ImageBackground>
   );
@@ -109,44 +228,101 @@ export function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   bg: { flex: 1 },
   container: { flex: 1 },
-  content: { padding: 20, paddingTop: 60 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  content: { padding: 20, paddingTop: 60, paddingBottom: 40 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   logo: { fontSize: 22, fontWeight: '900', color: colors.accent, letterSpacing: 2 },
-  walletBtn: {
-    backgroundColor: colors.bg.surface,
+  tagline: { color: colors.text.muted, fontSize: 14, marginBottom: 20 },
+
+  depositCard: { marginBottom: 20 },
+  cardTitle: { color: colors.text.muted, fontSize: 12, fontWeight: '700', letterSpacing: 2, marginBottom: 16 },
+
+  tokenRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 12 },
+  tokenInput: { flex: 1 },
+  inputLabel: { color: colors.text.faint, fontSize: 11, fontWeight: '600', marginBottom: 6 },
+  tokenField: {
+    backgroundColor: colors.bg.deep,
+    borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 12,
+    color: colors.text.primary,
+    fontSize: 16,
+    fontWeight: '700',
     borderWidth: 1,
     borderColor: colors.border.subtle,
   },
-  walletText: { color: colors.text.primary, fontSize: 13, fontWeight: '600' },
-  portfolioCard: { marginBottom: 16 },
-  portfolioLabel: { color: colors.text.muted, fontSize: 13, marginBottom: 4 },
-  portfolioValue: { color: colors.text.primary, fontSize: 36, fontWeight: '800', letterSpacing: 1 },
-  portfolioRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
-  stat: { alignItems: 'center' },
-  statLabel: { color: colors.text.faint, fontSize: 11, marginBottom: 4 },
-  statValue: { color: colors.text.primary, fontSize: 16, fontWeight: '700' },
-  ctaBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 24,
+  swapIcon: { paddingBottom: 14 },
+
+  quickPairs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  pairChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    backgroundColor: colors.bg.deep,
   },
-  ctaText: { color: colors.bg.deep, fontSize: 17, fontWeight: '800', letterSpacing: 1 },
-  sectionTitle: {
-    color: colors.text.muted,
-    fontSize: 12,
+  pairChipActive: { borderColor: colors.accent, backgroundColor: colors.accent + '15' },
+  pairChipText: { color: colors.text.faint, fontSize: 12, fontWeight: '600' },
+  pairChipTextActive: { color: colors.accent },
+
+  amountRow: { marginBottom: 16 },
+  amountField: {
+    backgroundColor: colors.bg.deep,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: colors.text.primary,
+    fontSize: 18,
     fontWeight: '700',
-    letterSpacing: 2,
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
   },
-  positionCard: { width: 160, marginRight: 12 },
-  positionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  positionPair: { color: colors.text.primary, fontSize: 16, fontWeight: '700' },
-  positionDex: { color: colors.text.faint, fontSize: 11, marginTop: 2 },
-  positionValue: { color: colors.text.primary, fontSize: 18, fontWeight: '700', marginTop: 8 },
-  positionPnl: { fontSize: 13, fontWeight: '600', marginTop: 4 },
+
+  toggleRow: { flexDirection: 'row', gap: 12 },
+  toggle: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    backgroundColor: colors.bg.deep,
+  },
+  toggleActive: { borderColor: colors.accent + '60', backgroundColor: colors.accent + '10' },
+  toggleText: { color: colors.text.faint, fontSize: 13, fontWeight: '600' },
+  toggleTextActive: { color: colors.accent },
+
+  loadingWrap: { alignItems: 'center', marginTop: 32, gap: 12 },
+  loadingText: { color: colors.text.muted, fontSize: 14 },
+
+  sectionTitle: {
+    color: colors.text.muted, fontSize: 12, fontWeight: '700',
+    letterSpacing: 2, marginBottom: 12,
+  },
+
+  poolCard: { marginBottom: 12 },
+  poolHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  poolDex: { color: colors.text.faint, fontSize: 11, fontWeight: '600' },
+  poolPair: { color: colors.text.primary, fontSize: 17, fontWeight: '700' },
+  poolRight: { alignItems: 'flex-end' },
+  poolYield: { color: colors.success, fontSize: 16, fontWeight: '800' },
+  scoreBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4 },
+  scoreText: { fontSize: 12, fontWeight: '700' },
+  poolStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, marginBottom: 12 },
+  poolStat: { color: colors.text.muted, fontSize: 12 },
+
+  depositBtn: {
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  depositBtnDisabled: { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.subtle },
+  depositBtnText: { color: colors.bg.deep, fontSize: 15, fontWeight: '800' },
+
+  emptyCard: { alignItems: 'center', paddingVertical: 32, gap: 12 },
+  emptyText: { color: colors.text.faint, fontSize: 14, textAlign: 'center' },
 });
