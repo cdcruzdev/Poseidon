@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo } from "react";
 import type { Pool } from "@/lib/api";
@@ -29,7 +29,7 @@ const RISK_PROFILES: Record<RiskLevel, Omit<RiskProfile, "score">> = {
     color: "#4ade80",
     bgColor: "rgba(74, 222, 128, 0.1)",
     borderColor: "rgba(74, 222, 128, 0.3)",
-    icon: "🛡️",
+    icon: "Lo",
     description: "Low risk, stable pairs, high TVL",
   },
   moderate: {
@@ -38,7 +38,7 @@ const RISK_PROFILES: Record<RiskLevel, Omit<RiskProfile, "score">> = {
     color: "#7ec8e8",
     bgColor: "rgba(126, 200, 232, 0.1)",
     borderColor: "rgba(126, 200, 232, 0.3)",
-    icon: "⚖️",
+    icon: "Md",
     description: "Balanced risk-reward profile",
   },
   aggressive: {
@@ -47,7 +47,7 @@ const RISK_PROFILES: Record<RiskLevel, Omit<RiskProfile, "score">> = {
     color: "#fbbf24",
     bgColor: "rgba(251, 191, 36, 0.1)",
     borderColor: "rgba(251, 191, 36, 0.3)",
-    icon: "⚡",
+    icon: "Hi",
     description: "Higher volatility, higher potential returns",
   },
   degen: {
@@ -56,7 +56,7 @@ const RISK_PROFILES: Record<RiskLevel, Omit<RiskProfile, "score">> = {
     color: "#f87171",
     bgColor: "rgba(248, 113, 113, 0.1)",
     borderColor: "rgba(248, 113, 113, 0.3)",
-    icon: "🔥",
+    icon: "!!",
     description: "High risk, new/volatile tokens",
   },
 };

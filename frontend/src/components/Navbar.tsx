@@ -18,7 +18,7 @@ export default function Navbar() {
               height={40}
               className="rounded-lg"
             />
-            <span className="text-xl tracking-widest text-[#e0e8f0]" style={{ fontFamily: 'var(--font-bebas)' }}>
+            <span className="text-lg sm:text-xl tracking-widest text-[#e0e8f0]" style={{ fontFamily: 'var(--font-bebas)' }}>
               POSEIDON
             </span>
           </Link>

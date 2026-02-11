@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -171,7 +171,7 @@ export default function DepositCard() {
             onClick={fetchPools}
             disabled={loadingPools}
             className="p-2 rounded-lg hover:bg-[#1a3050]/50 transition-colors text-[#5a7090] hover:text-[#ffffff] disabled:opacity-50"
-            title="Refresh pools"
+            title="Refresh pools" aria-label="Refresh pools"
           >
             <svg
               width="18"
@@ -203,7 +203,7 @@ export default function DepositCard() {
           <div className="flex items-center justify-center -my-1 relative z-10">
             <button
               onClick={handleSwapTokens}
-              className="w-10 h-10 rounded-xl bg-[#0a1520]/90 border border-[#1a3050] flex items-center justify-center hover:border-[#2a4060] hover:bg-[#0d1d30] transition-colors"
+              className="w-10 h-10 rounded-xl bg-[#0a1520]/90 border border-[#1a3050] flex items-center justify-center hover:border-[#2a4060] hover:bg-[#0d1d30] transition-colors" aria-label="Swap tokens"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M7 16V4M7 4L3 8M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4" />

@@ -43,7 +43,7 @@ export default function AgentHealthBar() {
   const secs = Math.floor((elapsed % 60000) / 1000);
 
   return (
-    <div className="bg-[#0a1520]/60 backdrop-blur-sm rounded-full border border-[#1a3050] px-4 py-2 flex items-center gap-3 max-w-fit mx-auto mb-6">
+    <div className="bg-[#0a1520]/60 backdrop-blur-sm rounded-full border border-[#1a3050] px-3 sm:px-4 py-2 flex items-center gap-2 sm:gap-3 max-w-fit mx-auto mb-6">
       {/* Heartbeat */}
       <div className="flex items-center gap-1.5">
         <div className="relative">
@@ -66,17 +66,15 @@ export default function AgentHealthBar() {
       {/* Status */}
       <span className="text-xs text-[#8899aa]">{isOnline ? "Agent Online" : "Agent Offline"}</span>
 
-      <div className="w-px h-4 bg-[#1a3050]" />
-
-      {/* Uptime */}
-      <span className="text-xs font-mono text-[#5a7090]">
+      {/* Uptime - hidden on mobile */}
+      <div className="hidden sm:block w-px h-4 bg-[#1a3050]" />
+      <span className="hidden sm:inline text-xs font-mono text-[#5a7090]">
         {days}d {hours}h {mins}m {secs}s
       </span>
 
-      <div className="w-px h-4 bg-[#1a3050]" />
-
-      {/* Positions monitored */}
-      <div className="flex items-center gap-1">
+      {/* Positions monitored - hidden on mobile */}
+      <div className="hidden sm:block w-px h-4 bg-[#1a3050]" />
+      <div className="hidden sm:flex items-center gap-1">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
           <circle cx="12" cy="12" r="3" />
@@ -84,10 +82,9 @@ export default function AgentHealthBar() {
         <span className="text-xs text-[#5a7090]">3 positions</span>
       </div>
 
-      <div className="w-px h-4 bg-[#1a3050]" />
-
-      {/* Next scan */}
-      <div className="flex items-center gap-1">
+      {/* Next scan - hidden on mobile */}
+      <div className="hidden sm:block w-px h-4 bg-[#1a3050]" />
+      <div className="hidden sm:flex items-center gap-1">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2">
           <circle cx="12" cy="12" r="10" />
           <path d="M12 6v6l4 2" />

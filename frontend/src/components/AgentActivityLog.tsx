@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { API_BASE } from "@/lib/api";
@@ -79,7 +79,7 @@ export default function AgentActivityLog() {
           setActions(json.data.activities);
         }
       } catch {
-        // silently fail — show empty state
+        // silently fail -- show empty state
       } finally {
         setLoading(false);
       }

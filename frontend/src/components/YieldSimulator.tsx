@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useEffect } from "react";
 import type { Pool } from "@/lib/api";
@@ -263,10 +263,10 @@ export default function YieldSimulator({
             <div className="mt-2 p-2 bg-[#0a1520] rounded-lg">
               <div className="text-[#5a7090] mb-1">Assumptions</div>
               <ul className="text-[#5a7090] space-y-0.5 text-[11px]">
-                <li>• Yield remains constant (actual may vary)</li>
-                <li>• Daily auto-compounding enabled</li>
-                <li>• No impermanent loss considered</li>
-                <li>• Fees reinvested automatically</li>
+                <li>- Yield remains constant (actual may vary)</li>
+                <li>- Daily auto-compounding enabled</li>
+                <li>- No impermanent loss considered</li>
+                <li>- Fees reinvested automatically</li>
               </ul>
             </div>
           </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Toggle from "@/components/Toggle";
@@ -69,10 +69,10 @@ export default function AutoRebalance({
       try {
         if (newEnabled) {
           const sig = await enableRebalance(100, 50); // 1% slippage, 0.5% min yield
-          setStatus({ type: "success", msg: `Enabled! Tx: ${sig.slice(0, 8)}…` });
+          setStatus({ type: "success", msg: `Enabled! Tx: ${sig.slice(0, 8)}...` });
         } else {
           const sig = await disableRebalance();
-          setStatus({ type: "success", msg: `Disabled! Tx: ${sig.slice(0, 8)}…` });
+          setStatus({ type: "success", msg: `Disabled! Tx: ${sig.slice(0, 8)}...` });
         }
         onEnabledChange(newEnabled);
       } catch (err: unknown) {

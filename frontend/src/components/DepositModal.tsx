@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -51,8 +51,8 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
 
   if (!pool) return null;
 
-  const dexColor = dexColors[pool.dex] || "#5eead4";
-  const getTokenColor = (symbol: string) => tokenColors[symbol] || "#5eead4";
+  const dexColor = dexColors[pool.dex] || "#7ec8e8";
+  const getTokenColor = (symbol: string) => tokenColors[symbol] || "#7ec8e8";
 
   const handleDeposit = async () => {
     if (!connected) {
@@ -80,19 +80,19 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#18181b] rounded-2xl border border-[#27272a] w-full max-w-md overflow-hidden shadow-2xl shadow-black/50">
+      <div className="bg-[#0a1520] rounded-2xl border border-[#1a3050] w-full max-w-md overflow-hidden shadow-2xl shadow-black/50">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#27272a]">
+        <div className="flex items-center justify-between p-6 border-b border-[#1a3050]">
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
               <div
-                className="w-8 h-8 rounded-full border-2 border-[#18181b] flex items-center justify-center text-xs font-bold text-[#09090b]"
+                className="w-8 h-8 rounded-full border-2 border-[#0a1520] flex items-center justify-center text-xs font-bold text-[#0a1520]"
                 style={{ backgroundColor: getTokenColor(pool.tokenA.symbol) }}
               >
                 {pool.tokenA.symbol.slice(0, 2)}
               </div>
               <div
-                className="w-8 h-8 rounded-full border-2 border-[#18181b] flex items-center justify-center text-xs font-bold text-[#09090b]"
+                className="w-8 h-8 rounded-full border-2 border-[#0a1520] flex items-center justify-center text-xs font-bold text-[#0a1520]"
                 style={{ backgroundColor: getTokenColor(pool.tokenB.symbol) }}
               >
                 {pool.tokenB.symbol.slice(0, 2)}
@@ -112,7 +112,8 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
           </div>
           <button
             onClick={handleClose}
-            className="text-[#71717a] hover:text-[#fafafa] transition-colors"
+            className="text-[#5a7090] hover:text-[#e0e8f0] transition-colors"
+            aria-label="Close modal"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -126,8 +127,8 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
             <>
               {/* Wallet Status */}
               {!connected ? (
-                <div className="mb-6 p-4 bg-[#27272a] rounded-xl text-center">
-                  <p className="text-[#a1a1aa] mb-3">Connect wallet to deposit</p>
+                <div className="mb-6 p-4 bg-[#1a3050] rounded-xl text-center">
+                  <p className="text-[#8899aa] mb-3">Connect wallet to deposit</p>
                   <button
                     onClick={openWalletModal}
                     className="btn btn-primary"
@@ -136,8 +137,8 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
                   </button>
                 </div>
               ) : (
-                <div className="mb-6 p-3 bg-[#27272a] rounded-lg flex items-center justify-between">
-                  <span className="text-sm text-[#a1a1aa]">Wallet Balance</span>
+                <div className="mb-6 p-3 bg-[#1a3050] rounded-lg flex items-center justify-between">
+                  <span className="text-sm text-[#8899aa]">Wallet Balance</span>
                   <span className="font-mono text-sm">
                     {balance !== null ? `${balance.toFixed(4)} SOL` : "Loading..."}
                   </span>
@@ -146,7 +147,7 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
 
               {/* Token A Input */}
               <div className="mb-4">
-                <label className="block text-sm text-[#a1a1aa] mb-2">
+                <label className="block text-sm text-[#8899aa] mb-2">
                   {pool.tokenA.symbol} Amount
                 </label>
                 <div className="relative">
@@ -155,10 +156,10 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
                     value={amountA}
                     onChange={(e) => setAmountA(e.target.value)}
                     placeholder="0.00"
-                    className="w-full px-4 py-3 bg-[#27272a] border border-[#3f3f46] rounded-lg focus:border-[#52525b] focus:outline-none text-right pr-20"
+                    className="w-full px-4 py-3 bg-[#1a3050] border border-[#2a4060] rounded-lg focus:border-[#3a5070] focus:outline-none text-right pr-20"
                     disabled={!connected}
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#a1a1aa] font-medium">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8899aa] font-medium">
                     {pool.tokenA.symbol}
                   </span>
                 </div>
@@ -166,8 +167,8 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
 
               {/* Plus Icon */}
               <div className="flex justify-center my-2">
-                <div className="w-8 h-8 rounded-full bg-[#3f3f46] flex items-center justify-center">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2">
+                <div className="w-8 h-8 rounded-full bg-[#2a4060] flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
                   </svg>
                 </div>
@@ -175,7 +176,7 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
 
               {/* Token B Input */}
               <div className="mb-6">
-                <label className="block text-sm text-[#a1a1aa] mb-2">
+                <label className="block text-sm text-[#8899aa] mb-2">
                   {pool.tokenB.symbol} Amount
                 </label>
                 <div className="relative">
@@ -184,27 +185,27 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
                     value={amountB}
                     onChange={(e) => setAmountB(e.target.value)}
                     placeholder="0.00"
-                    className="w-full px-4 py-3 bg-[#27272a] border border-[#3f3f46] rounded-lg focus:border-[#52525b] focus:outline-none text-right pr-20"
+                    className="w-full px-4 py-3 bg-[#1a3050] border border-[#2a4060] rounded-lg focus:border-[#3a5070] focus:outline-none text-right pr-20"
                     disabled={!connected}
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#a1a1aa] font-medium">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8899aa] font-medium">
                     {pool.tokenB.symbol}
                   </span>
                 </div>
               </div>
 
               {/* Pool Info */}
-              <div className="p-4 bg-[#27272a] rounded-xl mb-6">
+              <div className="p-4 bg-[#1a3050] rounded-xl mb-6">
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-[#a1a1aa]">Pool TVL</span>
+                  <span className="text-[#8899aa]">Pool TVL</span>
                   <span>${(pool.tvl / 1_000_000).toFixed(2)}M</span>
                 </div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-[#a1a1aa]">Est. 24h Yield</span>
+                  <span className="text-[#8899aa]">Est. 24h Yield</span>
                   <span className="text-[#4ade80]">{pool.apr24h.toFixed(2)}%</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-[#a1a1aa]">Fee Tier</span>
+                  <span className="text-[#8899aa]">Fee Tier</span>
                   <span>{(pool.feeRate * 100).toFixed(2)}%</span>
                 </div>
               </div>
@@ -222,9 +223,9 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
 
           {step === "confirm" && (
             <div className="text-center py-8">
-              <div className="w-16 h-16 mx-auto mb-4 border-4 border-[#3f3f46] border-t-[#5eead4] rounded-full animate-spin" />
+              <div className="w-16 h-16 mx-auto mb-4 border-4 border-[#2a4060] border-t-[#7ec8e8] rounded-full animate-spin" />
               <h3 className="text-xl font-semibold mb-2">Confirming Transaction</h3>
-              <p className="text-[#a1a1aa]">Please approve in your wallet...</p>
+              <p className="text-[#8899aa]">Please approve in your wallet...</p>
             </div>
           )}
 
@@ -236,7 +237,7 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
                 </svg>
               </div>
               <h3 className="text-xl font-semibold mb-2">Deposit Successful!</h3>
-              <p className="text-[#a1a1aa] mb-6">
+              <p className="text-[#8899aa] mb-6">
                 Your LP position has been created with privacy enabled.
               </p>
               <button onClick={handleClose} className="btn btn-primary">
@@ -249,12 +250,12 @@ export default function DepositModal({ pool, onClose }: DepositModalProps) {
         {/* Privacy Notice */}
         {step === "input" && (
           <div className="px-6 pb-6">
-            <div className="flex items-center gap-2 p-3 bg-[#5eead4]/10 border border-[#5eead4]/20 rounded-lg">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="2">
+            <div className="flex items-center gap-2 p-3 bg-[#7ec8e8]/10 border border-[#7ec8e8]/20 rounded-lg">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7ec8e8" strokeWidth="2">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
-              <span className="text-xs text-[#5eead4]">
+              <span className="text-xs text-[#7ec8e8]">
                 Position will be encrypted with Arcium privacy
               </span>
             </div>

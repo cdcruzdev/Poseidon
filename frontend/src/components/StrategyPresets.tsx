@@ -146,7 +146,7 @@ export default function StrategyPresets({ selected, onSelect }: StrategyPresetsP
                   </span>
                 </div>
                 <p className="text-xs text-[#5a7090] mb-2">{strategy.description}</p>
-                <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
                   <div>
                     <span className="text-[#5a7090]">Range</span>
                     <p className="text-[#8899aa] font-mono">{strategy.rangeWidth}</p>

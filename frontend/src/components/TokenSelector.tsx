@@ -171,7 +171,7 @@ export default function TokenSelector({
             onChange={(e) => onAmountChange(e.target.value)}
             placeholder="0.00"
             disabled={disabled}
-            className="w-full bg-transparent text-2xl font-semibold text-right focus:outline-none placeholder-[#5a7090] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-transparent text-xl sm:text-2xl font-semibold text-right focus:outline-none placeholder-[#5a7090] disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 
@@ -42,19 +42,19 @@ function generateActivity(): Activity {
 
 const typeConfig = {
   deposit: {
-    icon: "↓",
+    icon: "+",
     color: "#4ade80",
     bgColor: "rgba(74, 222, 128, 0.1)",
     label: "Deposited",
   },
   withdraw: {
-    icon: "↑",
+    icon: "-",
     color: "#f87171",
     bgColor: "rgba(248, 113, 113, 0.1)",
     label: "Withdrew",
   },
   rebalance: {
-    icon: "⟲",
+    icon: "R",
     color: "#7ec8e8",
     bgColor: "rgba(126, 200, 232, 0.1)",
     label: "Rebalanced",
@@ -161,7 +161,7 @@ export default function LiveActivityFeed({
                 </div>
                 <div className="flex items-center gap-2 text-xs text-[#5a7090]">
                   <span>{activity.pair}</span>
-                  <span>•</span>
+                  <span className="text-[#3a5070]">|</span>
                   <span className="text-[#7ec8e8]">{activity.dex}</span>
                 </div>
               </div>

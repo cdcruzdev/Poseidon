@@ -1,4 +1,4 @@
-interface StatsCardProps {
+﻿interface StatsCardProps {
   title: string;
   value: string;
   change?: string;
@@ -14,10 +14,10 @@ export default function StatsCard({
   icon,
 }: StatsCardProps) {
   return (
-    <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6">
+    <div className="bg-[#0a1520] border border-[#1a3050] rounded-xl p-6">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[#a1a1aa] text-sm mb-2">{title}</p>
+          <p className="text-[#5a7090] text-sm mb-2">{title}</p>
           <p className="text-2xl font-semibold">{value}</p>
           {change && (
             <p
@@ -30,7 +30,7 @@ export default function StatsCard({
           )}
         </div>
         {icon && (
-          <div className="w-12 h-12 rounded-lg bg-[#27272a] flex items-center justify-center text-[#5eead4]">
+          <div className="w-12 h-12 rounded-lg bg-[#1a3050] flex items-center justify-center text-[#5eead4]">
             {icon}
           </div>
         )}

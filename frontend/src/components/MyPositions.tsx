@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -189,7 +189,7 @@ export default function MyPositions() {
           </p>
           <button
             onClick={handleConnect}
-            className="px-6 py-2.5 bg-[#fafaf9] text-[#09090b] font-medium rounded-lg hover:bg-[#e7e5e4] transition-colors"
+            className="px-6 py-2.5 bg-[#e0e8f0] text-[#0a1520] font-medium rounded-lg hover:bg-[#c8d8e8] transition-colors"
           >
             Connect Wallet
           </button>

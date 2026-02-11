@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 interface PoolCardProps {
   pool: {
@@ -45,23 +45,23 @@ export default function PoolCard({ pool, onDeposit }: PoolCardProps) {
   // Handle invalid APR values
   const displayApr = isNaN(pool.apr) || !isFinite(pool.apr) ? 0 : pool.apr;
 
-  const getTokenColor = (symbol: string) => tokenColors[symbol] || "#5eead4";
+  const getTokenColor = (symbol: string) => tokenColors[symbol] || "#7ec8e8";
 
   return (
-    <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6 hover:border-[#3f3f46] transition-colors">
+    <div className="bg-[#0a1520] border border-[#1a3050] rounded-xl p-6 hover:border-[#2a4060] transition-colors">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           {/* Token pair icons */}
           <div className="flex -space-x-2">
             <div
-              className="w-10 h-10 rounded-full border-2 border-[#18181b] flex items-center justify-center text-xs font-bold text-[#09090b]"
+              className="w-10 h-10 rounded-full border-2 border-[#0a1520] flex items-center justify-center text-xs font-bold text-[#0a1520]"
               style={{ backgroundColor: getTokenColor(pool.tokenA) }}
             >
               {pool.tokenA.slice(0, 2)}
             </div>
             <div
-              className="w-10 h-10 rounded-full border-2 border-[#18181b] flex items-center justify-center text-xs font-bold text-[#09090b]"
+              className="w-10 h-10 rounded-full border-2 border-[#0a1520] flex items-center justify-center text-xs font-bold text-[#0a1520]"
               style={{ backgroundColor: getTokenColor(pool.tokenB) }}
             >
               {pool.tokenB.slice(0, 2)}
@@ -84,27 +84,27 @@ export default function PoolCard({ pool, onDeposit }: PoolCardProps) {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
-          <p className="text-[#a1a1aa] text-sm mb-1">TVL</p>
+          <p className="text-[#5a7090] text-sm mb-1">TVL</p>
           <p className="font-semibold text-lg">{formatNumber(pool.tvl)}</p>
         </div>
         <div>
-          <p className="text-[#a1a1aa] text-sm mb-1">Est. 24h Yield</p>
-          <p className={`font-semibold text-lg ${displayApr > 0 ? 'text-[#4ade80]' : 'text-[#71717a]'}`}>
+          <p className="text-[#5a7090] text-sm mb-1">Est. 24h Yield</p>
+          <p className={`font-semibold text-lg ${displayApr > 0 ? 'text-[#4ade80]' : 'text-[#5a7090]'}`}>
             {displayApr > 0 ? `${displayApr.toFixed(2)}%` : 'N/A'}
           </p>
         </div>
         <div>
-          <p className="text-[#a1a1aa] text-sm mb-1">24h Volume</p>
+          <p className="text-[#5a7090] text-sm mb-1">24h Volume</p>
           <p className="font-medium">{formatNumber(pool.volume24h)}</p>
         </div>
         <div>
-          <p className="text-[#a1a1aa] text-sm mb-1">Fee</p>
+          <p className="text-[#5a7090] text-sm mb-1">Fee</p>
           <p className="font-medium">{(pool.feeRate * 100).toFixed(2)}%</p>
         </div>
       </div>
 
       {/* Address (truncated) */}
-      <div className="mb-4 p-2 bg-[#27272a] rounded-lg text-xs font-mono text-[#71717a] truncate">
+      <div className="mb-4 p-2 bg-[#1a3050] rounded-lg text-xs font-mono text-[#5a7090] truncate">
         {pool.address}
       </div>
 

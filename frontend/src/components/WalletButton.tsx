@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -23,15 +23,15 @@ export default function WalletButton({ className }: WalletButtonProps) {
   if (connected && publicKey) {
     return (
       <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-[#18181b] rounded-lg border border-[#27272a]">
+        <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-[#0a1520] rounded-lg border border-[#1a3050]">
           <div className="w-2 h-2 rounded-full bg-[#4ade80]" />
-          <span className="text-sm font-mono text-[#fafafa]">
+          <span className="text-sm font-mono text-[#e0e8f0]">
             {shortenAddress(publicKey.toBase58())}
           </span>
         </div>
         <button
           onClick={disconnect}
-          className="px-4 py-2 text-sm font-medium text-[#a1a1aa] hover:text-[#fafafa] border border-[#27272a] rounded-lg transition-colors hover:border-[#3f3f46]"
+          className="px-4 py-2 text-sm font-medium text-[#8899aa] hover:text-[#e0e8f0] border border-[#1a3050] rounded-lg transition-colors hover:border-[#2a4060]"
         >
           Disconnect
         </button>
@@ -43,7 +43,7 @@ export default function WalletButton({ className }: WalletButtonProps) {
     <button
       onClick={handleConnect}
       disabled={connecting}
-      className={`px-6 py-2.5 bg-[#fafaf9] text-[#09090b] font-medium rounded-lg hover:bg-[#e7e5e4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className || ""}`}
+      className={`px-4 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base bg-[#e0e8f0] text-[#09090b] font-medium rounded-lg hover:bg-[#c8d8e8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className || ""}`}
     >
       {connecting ? "Connecting..." : "Connect Wallet"}
     </button>
