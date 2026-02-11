@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { API_BASE } from "@/lib/api";
 
 interface PerformancePeriod {
   label: string;
@@ -16,55 +17,73 @@ interface PerformancePeriod {
   uptimePercent: number;
 }
 
-const periods: PerformancePeriod[] = [
-  {
-    label: "24h",
-    totalActions: 12,
-    rebalances: 4,
-    migrations: 1,
-    gasSpent: "0.018 SOL",
-    feesEarned: "$42.18",
-    netProfit: "$38.72",
-    ilSaved: "$14.30",
-    avgConfidence: 88,
-    successRate: 100,
-    uptimePercent: 100,
-  },
-  {
-    label: "7d",
-    totalActions: 67,
-    rebalances: 22,
-    migrations: 5,
-    gasSpent: "0.112 SOL",
-    feesEarned: "$284.56",
-    netProfit: "$263.12",
-    ilSaved: "$89.44",
-    avgConfidence: 85,
-    successRate: 97,
-    uptimePercent: 99.8,
-  },
-  {
-    label: "30d",
-    totalActions: 241,
-    rebalances: 89,
-    migrations: 14,
-    gasSpent: "0.482 SOL",
-    feesEarned: "$1,142.30",
-    netProfit: "$1,048.62",
-    ilSaved: "$312.88",
-    avgConfidence: 84,
-    successRate: 95,
-    uptimePercent: 99.6,
-  },
-];
+interface ApiPerformance {
+  uptime: number;
+  uptimeFormatted: string;
+  positionsMonitored: number;
+  rebalancesExecuted: number;
+  feesCollected: { deposit: number; performance: number };
+  totalValueManaged: number;
+}
 
-function barWidth(value: number, max: number): string {
-  return `${Math.min((value / max) * 100, 100)}%`;
+const defaultPeriod: PerformancePeriod = {
+  label: "All Time",
+  totalActions: 0,
+  rebalances: 0,
+  migrations: 0,
+  gasSpent: "0 SOL",
+  feesEarned: "$0.00",
+  netProfit: "$0.00",
+  ilSaved: "$0.00",
+  avgConfidence: 0,
+  successRate: 0,
+  uptimePercent: 0,
+};
+
+function mapApiToPerformance(api: ApiPerformance): PerformancePeriod {
+  const totalFees = (api.feesCollected?.deposit || 0) + (api.feesCollected?.performance || 0);
+  const uptimePct = api.uptime > 0 ? Math.min(100, (api.uptime / (api.uptime + 1)) * 100) : 0;
+  return {
+    label: "All Time",
+    totalActions: api.rebalancesExecuted + api.positionsMonitored,
+    rebalances: api.rebalancesExecuted,
+    migrations: 0,
+    gasSpent: "0 SOL",
+    feesEarned: `$${totalFees.toFixed(2)}`,
+    netProfit: `$${totalFees.toFixed(2)}`,
+    ilSaved: "$0.00",
+    avgConfidence: 0,
+    successRate: 0,
+    uptimePercent: Math.round(uptimePct * 10) / 10,
+  };
 }
 
 export default function AgentPerformance() {
-  const [activePeriod, setActivePeriod] = useState(0);
-  const p = periods[activePeriod];
+  const [period, setPeriod] = useState<PerformancePeriod>(defaultPeriod);
+  const [loading, setLoading] = useState(true);
+  const [uptimeLabel, setUptimeLabel] = useState("");
+
+  useEffect(() => {
+    async function fetchPerformance() {
+      try {
+        const res = await fetch(`${API_BASE}/api/agent/performance`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          setPeriod(mapApiToPerformance(json.data));
+          setUptimeLabel(json.data.uptimeFormatted || "");
+        }
+      } catch {
+        // silently fail
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPerformance();
+    const interval = setInterval(fetchPerformance, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const p = period;
 
   const stats = [
     {
@@ -107,106 +126,107 @@ export default function AgentPerformance() {
           </h3>
         </div>
 
-        {/* Period tabs */}
-        <div className="flex gap-1 bg-[#0a1520]/60 rounded-lg p-0.5">
-          {periods.map((period, i) => (
-            <button
-              key={period.label}
-              onClick={() => setActivePeriod(i)}
-              className={`px-3 py-1 text-xs rounded-md transition-all ${
-                activePeriod === i
-                  ? "bg-[#1a3050] text-[#e0e8f0]"
-                  : "text-[#5a7090] hover:text-[#8899aa]"
-              }`}
-            >
-              {period.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          {uptimeLabel && (
+            <span className="text-xs text-[#5a7090]">Uptime: {uptimeLabel}</span>
+          )}
+          <span className="text-xs text-[#8899aa] bg-[#1a3050] px-2.5 py-1 rounded-md">
+            {p.label}
+          </span>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3 p-4">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-[#0a1520]/60 rounded-lg p-3"
-          >
-            <p className="text-[10px] text-[#5a7090] uppercase tracking-wider mb-1">
-              {stat.label}
-            </p>
-            <p className="text-lg font-semibold font-mono" style={{ color: stat.color }}>
-              {stat.value}
-            </p>
-            {stat.sub && (
-              <p className="text-[10px] text-[#5a7090] mt-0.5">{stat.sub}</p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Progress Bars */}
-      <div className="px-4 pb-4 space-y-3">
-        {/* Success Rate */}
-        <div>
-          <div className="flex justify-between mb-1">
-            <span className="text-xs text-[#8899aa]">Success Rate</span>
-            <span className="text-xs font-mono text-[#4ade80]">{p.successRate}%</span>
-          </div>
-          <div className="h-1.5 bg-[#1a3050] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${p.successRate}%`,
-                backgroundColor: "#4ade80",
-              }}
-            />
-          </div>
+      {loading ? (
+        <div className="p-8 text-center">
+          <div className="w-5 h-5 border-2 border-[#1a3050] border-t-[#7ec8e8] rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-[#5a7090]">Loading performance...</p>
         </div>
+      ) : (
+        <>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 gap-3 p-4">
+            {stats.map((stat) => (
+              <div
+                key={stat.label}
+                className="bg-[#0a1520]/60 rounded-lg p-3"
+              >
+                <p className="text-[10px] text-[#5a7090] uppercase tracking-wider mb-1">
+                  {stat.label}
+                </p>
+                <p className="text-lg font-semibold font-mono" style={{ color: stat.color }}>
+                  {stat.value}
+                </p>
+                {stat.sub && (
+                  <p className="text-[10px] text-[#5a7090] mt-0.5">{stat.sub}</p>
+                )}
+              </div>
+            ))}
+          </div>
 
-        {/* Avg Confidence */}
-        <div>
-          <div className="flex justify-between mb-1">
-            <span className="text-xs text-[#8899aa]">Avg Confidence</span>
-            <span className="text-xs font-mono text-[#8B5CF6]">{p.avgConfidence}%</span>
-          </div>
-          <div className="h-1.5 bg-[#1a3050] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${p.avgConfidence}%`,
-                backgroundColor: "#8B5CF6",
-              }}
-            />
-          </div>
-        </div>
+          {/* Progress Bars */}
+          <div className="px-4 pb-4 space-y-3">
+            {/* Success Rate */}
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-xs text-[#8899aa]">Success Rate</span>
+                <span className="text-xs font-mono text-[#4ade80]">{p.successRate}%</span>
+              </div>
+              <div className="h-1.5 bg-[#1a3050] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${p.successRate}%`,
+                    backgroundColor: "#4ade80",
+                  }}
+                />
+              </div>
+            </div>
 
-        {/* Uptime */}
-        <div>
-          <div className="flex justify-between mb-1">
-            <span className="text-xs text-[#8899aa]">Uptime</span>
-            <span className="text-xs font-mono text-[#3B82F6]">{p.uptimePercent}%</span>
-          </div>
-          <div className="h-1.5 bg-[#1a3050] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${p.uptimePercent}%`,
-                backgroundColor: "#3B82F6",
-              }}
-            />
-          </div>
-        </div>
+            {/* Avg Confidence */}
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-xs text-[#8899aa]">Avg Confidence</span>
+                <span className="text-xs font-mono text-[#8B5CF6]">{p.avgConfidence}%</span>
+              </div>
+              <div className="h-1.5 bg-[#1a3050] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${p.avgConfidence}%`,
+                    backgroundColor: "#8B5CF6",
+                  }}
+                />
+              </div>
+            </div>
 
-        {/* Action breakdown */}
-        <div className="pt-2 border-t border-[#1a3050]/50">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[#5a7090]">
-              {p.totalActions} actions · {p.rebalances} rebalances · {p.migrations} migrations
-            </span>
+            {/* Uptime */}
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-xs text-[#8899aa]">Uptime</span>
+                <span className="text-xs font-mono text-[#3B82F6]">{p.uptimePercent}%</span>
+              </div>
+              <div className="h-1.5 bg-[#1a3050] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${p.uptimePercent}%`,
+                    backgroundColor: "#3B82F6",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Action breakdown */}
+            <div className="pt-2 border-t border-[#1a3050]/50">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[#5a7090]">
+                  {p.totalActions} actions -- {p.rebalances} rebalances -- {p.migrations} migrations
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

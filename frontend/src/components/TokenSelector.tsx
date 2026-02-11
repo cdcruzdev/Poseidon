@@ -114,7 +114,10 @@ export default function TokenSelector({
 
           {/* Dropdown */}
           {isOpen && (
-            <div className="absolute top-full left-0 mt-2 w-64 bg-[#0a1520]/95 backdrop-blur-md border border-[#1a3050] rounded-xl shadow-xl shadow-black/50 z-50 overflow-hidden">
+            <div
+              className="absolute top-full left-0 mt-2 w-64 bg-[#0a1520]/95 backdrop-blur-md border border-[#1a3050] rounded-xl shadow-xl shadow-black/50 z-50 overflow-hidden animate-dropdown-in"
+              style={{ transformOrigin: "top center" }}
+            >
               {/* Search */}
               <div className="p-3 border-b border-[#1a3050]">
                 <input

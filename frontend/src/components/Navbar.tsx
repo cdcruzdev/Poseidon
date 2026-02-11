@@ -6,11 +6,11 @@ import WalletButton from "./WalletButton";
 
 export default function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-transparent">
+    <nav className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3 pointer-events-auto">
             <Image
               src="/poseidon-icon.png"
               alt="Poseidon"
@@ -24,7 +24,7 @@ export default function Navbar() {
           </Link>
 
           {/* Wallet Button */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 pointer-events-auto">
             <WalletButton />
           </div>
         </div>

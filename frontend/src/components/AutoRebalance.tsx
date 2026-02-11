@@ -18,6 +18,9 @@ const YIELD_OPTIONS = [
   { value: "0.15", label: "0.15%" },
   { value: "0.20", label: "0.20%" },
   { value: "0.25", label: "0.25%" },
+  { value: "0.30", label: "0.30%" },
+  { value: "0.50", label: "0.50%" },
+  { value: "1.00", label: "1.00%" },
 ];
 
 export default function AutoRebalance({

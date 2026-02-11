@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { API_BASE } from "@/lib/api";
 
 export interface AgentAction {
   id: string;
@@ -53,60 +54,6 @@ const statusDot: Record<AgentAction["status"], string> = {
   failed: "#EF4444",
 };
 
-// Demo activity log showing autonomous agent behavior
-const demoActions: AgentAction[] = [
-  {
-    id: "1",
-    timestamp: new Date(Date.now() - 180000).toISOString(),
-    type: "scan",
-    pair: "SOL/USDC",
-    dex: "All DEXs",
-    description: "Scanned 47 pools across Meteora, Orca, Raydium",
-    details: "Best yield: Meteora DLMM (0.25% 24h), 2nd: Orca Whirlpool (0.18% 24h)",
-    status: "completed",
-  },
-  {
-    id: "2",
-    timestamp: new Date(Date.now() - 900000).toISOString(),
-    type: "rebalance",
-    pair: "SOL/USDC",
-    dex: "Meteora",
-    description: "Rebalanced position to bins 8,420-8,580",
-    details: "Price moved to $189.42, previous range was 8,350-8,510. Centered on current price with ±1.5% width.",
-    status: "completed",
-  },
-  {
-    id: "3",
-    timestamp: new Date(Date.now() - 2700000).toISOString(),
-    type: "optimize",
-    pair: "JUP/USDC",
-    dex: "Orca → Meteora",
-    description: "Migrated position for better yield",
-    details: "Orca yield dropped to 0.08%/24h. Meteora offering 0.22%/24h for same pair. Withdrew + redeposited.",
-    status: "completed",
-  },
-  {
-    id: "4",
-    timestamp: new Date(Date.now() - 5400000).toISOString(),
-    type: "alert",
-    pair: "WIF/USDC",
-    dex: "Meteora",
-    description: "Position out of range - monitoring for reentry",
-    details: "WIF price dropped 8.2% in 1h. Waiting for volatility to settle before rebalancing.",
-    status: "pending",
-  },
-  {
-    id: "5",
-    timestamp: new Date(Date.now() - 10800000).toISOString(),
-    type: "scan",
-    pair: "BONK/SOL",
-    dex: "Raydium",
-    description: "Detected high-yield opportunity (4.82% 24h)",
-    details: "Volume spike on BONK/SOL. Fee capture elevated. Current position is maximizing.",
-    status: "completed",
-  },
-];
-
 function timeAgo(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
   const mins = Math.floor(diff / 60000);
@@ -118,10 +65,31 @@ function timeAgo(timestamp: string): string {
 }
 
 export default function AgentActivityLog() {
+  const [actions, setActions] = useState<AgentAction[]>([]);
+  const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 
-  const visibleActions = showAll ? demoActions : demoActions.slice(0, 3);
+  useEffect(() => {
+    async function fetchActivity() {
+      try {
+        const res = await fetch(`${API_BASE}/api/agent/activity`);
+        const json = await res.json();
+        if (json.success && json.data?.activities) {
+          setActions(json.data.activities);
+        }
+      } catch {
+        // silently fail — show empty state
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchActivity();
+    const interval = setInterval(fetchActivity, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const visibleActions = showAll ? actions : actions.slice(0, 3);
 
   return (
     <div className="bg-[#0a1520]/80 backdrop-blur-sm rounded-xl border border-[#1a3050] overflow-hidden">
@@ -136,51 +104,70 @@ export default function AgentActivityLog() {
         <span className="text-xs text-[#5a7090]">Autonomous</span>
       </div>
 
-      {/* Actions */}
-      <div className="divide-y divide-[#1a3050]/50">
-        {visibleActions.map((action) => (
-          <button
-            key={action.id}
-            onClick={() => setExpanded(expanded === action.id ? null : action.id)}
-            className="w-full text-left p-3 hover:bg-[#0d1d30]/50 transition-colors"
-          >
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 shrink-0">{typeIcons[action.type]}</div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm text-[#e0e8f0] truncate">{action.description}</p>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <div
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: statusDot[action.status] }}
-                    />
-                    <span className="text-xs text-[#5a7090]">{timeAgo(action.timestamp)}</span>
+      {/* Content */}
+      {loading ? (
+        <div className="p-8 text-center">
+          <div className="w-5 h-5 border-2 border-[#1a3050] border-t-[#7ec8e8] rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-[#5a7090]">Loading activity...</p>
+        </div>
+      ) : actions.length === 0 ? (
+        <div className="p-8 text-center">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5a7090" strokeWidth="1.5" className="mx-auto mb-3">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          <p className="text-sm text-[#8899aa]">No activity yet</p>
+          <p className="text-xs text-[#5a7090] mt-1">The agent will log actions here once it starts operating</p>
+        </div>
+      ) : (
+        <>
+          {/* Actions */}
+          <div className="divide-y divide-[#1a3050]/50">
+            {visibleActions.map((action) => (
+              <button
+                key={action.id}
+                onClick={() => setExpanded(expanded === action.id ? null : action.id)}
+                className="w-full text-left p-3 hover:bg-[#0d1d30]/50 transition-colors"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 shrink-0">{typeIcons[action.type]}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-[#e0e8f0] truncate">{action.description}</p>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: statusDot[action.status] }}
+                        />
+                        <span className="text-xs text-[#5a7090]">{timeAgo(action.timestamp)}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-[#5a7090] mt-0.5">
+                      {action.pair} on {action.dex}
+                    </p>
+                    {expanded === action.id && action.details && (
+                      <p className="text-xs text-[#8899aa] mt-2 p-2 bg-[#0a1520]/60 rounded-lg">
+                        {action.details}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <p className="text-xs text-[#5a7090] mt-0.5">
-                  {action.pair} on {action.dex}
-                </p>
-                {expanded === action.id && action.details && (
-                  <p className="text-xs text-[#8899aa] mt-2 p-2 bg-[#0a1520]/60 rounded-lg">
-                    {action.details}
-                  </p>
-                )}
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
+              </button>
+            ))}
+          </div>
 
-      {/* Show more */}
-      {demoActions.length > 3 && (
-        <div className="p-3 border-t border-[#1a3050]">
-          <button
-            onClick={() => setShowAll(!showAll)}
-            className="w-full text-xs text-[#5a7090] hover:text-[#8899aa] transition-colors"
-          >
-            {showAll ? "Show less" : `Show ${demoActions.length - 3} more actions`}
-          </button>
-        </div>
+          {/* Show more */}
+          {actions.length > 3 && (
+            <div className="p-3 border-t border-[#1a3050]">
+              <button
+                onClick={() => setShowAll(!showAll)}
+                className="w-full text-xs text-[#5a7090] hover:text-[#8899aa] transition-colors"
+              >
+                {showAll ? "Show less" : `Show ${actions.length - 3} more actions`}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

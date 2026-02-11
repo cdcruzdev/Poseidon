@@ -24,6 +24,7 @@ interface WalletContextType {
   connecting: boolean;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
+  forceDisconnect: () => Promise<void>;
   signTransaction: <T extends Transaction | VersionedTransaction>(tx: T) => Promise<T>;
   signAllTransactions: <T extends Transaction | VersionedTransaction>(txs: T[]) => Promise<T[]>;
   signMessage: (message: Uint8Array) => Promise<Uint8Array>;
@@ -35,6 +36,7 @@ const WalletContext = createContext<WalletContextType>({
   connecting: false,
   connect: async () => {},
   disconnect: async () => {},
+  forceDisconnect: async () => {},
   signTransaction: async (tx) => tx,
   signAllTransactions: async (txs) => txs,
   signMessage: async (msg) => msg,
@@ -73,7 +75,6 @@ export function WalletProvider({ children }: WalletProviderProps) {
     })();
   }, []);
 
-  // Debug: log/alert when publicKey changes
   useEffect(() => {
     if (publicKey) {
       console.log('[Wallet] publicKey changed:', publicKey.toBase58());
@@ -86,14 +87,37 @@ export function WalletProvider({ children }: WalletProviderProps) {
     if (connecting) return;
     setConnecting(true);
     try {
-      console.log('[Wallet] Starting transact()...');
+      console.log('[Wallet] Starting MWA transact()...');
+
       const transactPromise = transact(async (wallet: Web3MobileWallet) => {
         console.log('[Wallet] Inside transact callback, calling authorize...');
-        const authResult = await wallet.authorize({
-          identity: APP_IDENTITY,
-          cluster: CLUSTER,
-        });
-        console.log('[Wallet] authorize returned:', authResult.accounts[0]?.address?.slice(0, 8));
+        
+        // If we have a stored auth token, try reauthorize first
+        const storedAuth = await AsyncStorage.getItem(STORAGE_KEY_AUTH);
+        let authResult;
+        
+        if (storedAuth) {
+          try {
+            authResult = await wallet.reauthorize({
+              identity: APP_IDENTITY,
+              auth_token: storedAuth,
+            });
+            console.log('[Wallet] reauthorize succeeded');
+          } catch {
+            console.log('[Wallet] reauthorize failed, trying fresh authorize...');
+            authResult = await wallet.authorize({
+              identity: APP_IDENTITY,
+              cluster: CLUSTER,
+            });
+          }
+        } else {
+          authResult = await wallet.authorize({
+            identity: APP_IDENTITY,
+            cluster: CLUSTER,
+          });
+        }
+
+        console.log('[Wallet] auth returned:', authResult.accounts[0]?.address?.slice(0, 8));
         return {
           address: authResult.accounts[0].address,
           authToken: authResult.auth_token,
@@ -102,12 +126,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(
-          'Wallet connection timed out. Make sure you have a Solana wallet app (like Phantom) installed and try again.'
+          'Wallet connection timed out (15s). The MWA native module may not be working. Make sure you have a Solana wallet app installed.'
         )), 15000)
       );
 
       const result = await Promise.race([transactPromise, timeoutPromise]);
-      // Persist to AsyncStorage BEFORE setting state (survives app kill)
+
       if (result && result.address) {
         await AsyncStorage.setItem(STORAGE_KEY_PUBKEY, result.address);
         if (result.authToken) {
@@ -121,7 +145,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
         Alert.alert('Error', 'No address returned from wallet');
       }
     } catch (err: any) {
-      console.error('Wallet connect error:', err);
+      console.error('[Wallet] Connect error:', err);
       Alert.alert('Wallet Error', err?.message || String(err));
     } finally {
       setConnecting(false);
@@ -139,7 +163,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
         await wallet.deauthorize({ auth_token: authToken });
       });
     } catch (err) {
-      console.error('Wallet disconnect error:', err);
+      console.error('[Wallet] Disconnect error:', err);
     } finally {
       setPublicKey(null);
       setAuthToken(null);
@@ -147,10 +171,24 @@ export function WalletProvider({ children }: WalletProviderProps) {
     }
   }, [authToken]);
 
+  // Force disconnect — clears local state without talking to wallet
+  const forceDisconnect = useCallback(async () => {
+    setPublicKey(null);
+    setAuthToken(null);
+    setConnecting(false);
+    await AsyncStorage.multiRemove([STORAGE_KEY_PUBKEY, STORAGE_KEY_AUTH]);
+    Alert.alert('Force Disconnected', 'Local wallet state cleared. You can now try connecting fresh.');
+  }, []);
+
   const signTransaction = useCallback(
     async <T extends Transaction | VersionedTransaction>(transaction: T): Promise<T> => {
       return await transact(async (wallet: Web3MobileWallet) => {
-        await wallet.authorize({ identity: APP_IDENTITY, cluster: CLUSTER });
+        const storedAuth = await AsyncStorage.getItem(STORAGE_KEY_AUTH);
+        if (storedAuth) {
+          await wallet.reauthorize({ identity: APP_IDENTITY, auth_token: storedAuth });
+        } else {
+          await wallet.authorize({ identity: APP_IDENTITY, cluster: CLUSTER });
+        }
         const signed = await wallet.signTransactions({
           transactions: [transaction],
         });
@@ -163,7 +201,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const signAllTransactions = useCallback(
     async <T extends Transaction | VersionedTransaction>(transactions: T[]): Promise<T[]> => {
       return await transact(async (wallet: Web3MobileWallet) => {
-        await wallet.authorize({ identity: APP_IDENTITY, cluster: CLUSTER });
+        const storedAuth = await AsyncStorage.getItem(STORAGE_KEY_AUTH);
+        if (storedAuth) {
+          await wallet.reauthorize({ identity: APP_IDENTITY, auth_token: storedAuth });
+        } else {
+          await wallet.authorize({ identity: APP_IDENTITY, cluster: CLUSTER });
+        }
         const signed = await wallet.signTransactions({ transactions });
         return signed as T[];
       });
@@ -173,7 +216,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
   const signMessage = useCallback(async (message: Uint8Array): Promise<Uint8Array> => {
     return await transact(async (wallet: Web3MobileWallet) => {
-      await wallet.authorize({ identity: APP_IDENTITY, cluster: CLUSTER });
+      const storedAuth = await AsyncStorage.getItem(STORAGE_KEY_AUTH);
+      if (storedAuth) {
+        await wallet.reauthorize({ identity: APP_IDENTITY, auth_token: storedAuth });
+      } else {
+        await wallet.authorize({ identity: APP_IDENTITY, cluster: CLUSTER });
+      }
       const signed = await wallet.signMessages({
         addresses: [publicKey!.toBase58()],
         payloads: [message],
@@ -189,11 +237,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
       connecting,
       connect,
       disconnect,
+      forceDisconnect,
       signTransaction,
       signAllTransactions,
       signMessage,
     }),
-    [publicKey, connected, connecting, connect, disconnect, signTransaction, signAllTransactions, signMessage],
+    [publicKey, connected, connecting, connect, disconnect, forceDisconnect, signTransaction, signAllTransactions, signMessage],
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

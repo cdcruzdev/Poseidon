@@ -1,10 +1,7 @@
 import Navbar from "@/components/Navbar";
 import DepositCard from "@/components/DepositCard";
-import MyPositions from "@/components/MyPositions";
-import AgentActivityLog from "@/components/AgentActivityLog";
-import AgentReasoningPanel from "@/components/AgentReasoningPanel";
-import AgentPerformance from "@/components/AgentPerformance";
 import AgentHealthBar from "@/components/AgentHealthBar";
+import WalletGatedSections from "@/components/WalletGatedSections";
 
 export default function Home() {
   return (
@@ -30,25 +27,14 @@ export default function Home() {
             <AgentHealthBar />
 
             {/* Deposit Card - Centered */}
-            <section className="mb-16 flex justify-center">
+            <section className="mb-10 flex justify-center">
               <div className="w-full max-w-xl">
                 <DepositCard />
               </div>
             </section>
 
-            {/* My Positions Section */}
-            <MyPositions />
-
-            {/* Agent Intelligence Section - Side by Side */}
-            <section className="mb-16 grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
-              <AgentActivityLog />
-              <AgentReasoningPanel />
-            </section>
-
-            {/* Agent Performance */}
-            <section className="mb-16 max-w-2xl mx-auto">
-              <AgentPerformance />
-            </section>
+            {/* Positions + Agent sections — only visible when wallet connected */}
+            <WalletGatedSections />
 
           </div>
         </main>
