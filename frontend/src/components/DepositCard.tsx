@@ -173,6 +173,15 @@ export default function DepositCard() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (tokenPrices.tokenA <= 0 || tokenPrices.tokenB <= 0) return;
 
+    // If either amount is empty/zero, don't auto-fill (user is clearing)
+    const aEmpty = !amountA || amountA === "0" || amountA === "0.";
+    const bEmpty = !amountB || amountB === "0" || amountB === "0.";
+
+    // Empty clears both
+    if (lastEditRef.current === "a" && aEmpty && amountB) { setAmountB(""); return; }
+    if (lastEditRef.current === "b" && bEmpty && amountA) { setAmountA(""); return; }
+    if (aEmpty || bEmpty) return;
+
     debounceRef.current = setTimeout(() => {
       if (lastEditRef.current === "a" && amountA && !manualTokenB) {
         const usdVal = parseFloat(amountA) * tokenPrices.tokenA;
