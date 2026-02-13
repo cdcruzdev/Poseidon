@@ -84,15 +84,14 @@ export default function PositionCard({ position: pos, expanded, onToggle }: Posi
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <button className="px-4 py-2 text-xs bg-[#1a3050] text-[#7ec8e8] rounded-lg hover:bg-[#1a3050]/80 transition-colors cursor-pointer">
-              Add Liquidity
-            </button>
-            <button className="px-4 py-2 text-xs bg-[#1a3050] text-[#fbbf24] rounded-lg hover:bg-[#1a3050]/80 transition-colors cursor-pointer">
-              Withdraw
-            </button>
-            <button className="px-4 py-2 text-xs bg-[#1a3050] text-[#8899aa] rounded-lg hover:bg-[#1a3050]/80 transition-colors cursor-pointer">
-              View on Solscan
-            </button>
+            <a
+              href={`https://xray.helius.xyz/tx/${pos.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 text-xs bg-[#1a3050] text-[#7ec8e8] rounded-lg hover:bg-[#1a3050]/80 transition-colors cursor-pointer"
+            >
+              View on Explorer
+            </a>
           </div>
         </div>
       </AnimateHeight>

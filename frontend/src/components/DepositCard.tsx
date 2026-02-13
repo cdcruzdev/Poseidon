@@ -30,7 +30,7 @@ function parseTxError(raw: string): string {
   if (lower.includes("blockhash") || lower.includes("expired"))
     return "Transaction expired. Please try again.";
   if (lower.includes("timeout") || lower.includes("timed out") || lower.includes("not confirmed"))
-    return "Transaction timed out. Check Solscan for status.";
+    return "Transaction timed out. Check explorer for status.";
   if (lower.includes("slippage") || lower.includes("exceeds desired"))
     return "Price moved too much (slippage). Try again or increase slippage tolerance.";
   if (lower.includes("simulation failed"))
@@ -565,12 +565,12 @@ export default function DepositCard() {
                 )}
                 {txSignature && (
                   <a
-                    href={`https://solscan.io/tx/${txSignature}`}
+                    href={`https://xray.helius.xyz/tx/${txSignature}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-[#7ec8e8] hover:underline"
                   >
-                    View on Solscan ?
+                    View on Explorer ↗
                   </a>
                 )}
               </div>

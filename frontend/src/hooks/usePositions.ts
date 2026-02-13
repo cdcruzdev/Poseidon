@@ -37,7 +37,10 @@ export function usePositions() {
     try {
       const wallet = publicKey.toBase58();
       
-      // Fetch recent transactions from Helius enhanced API
+      // Fetch SOL price and transactions in parallel
+      if (!cachedSolPrice) cachedSolPrice = await fetchSolPrice();
+      const solPrice = cachedSolPrice;
+
       const res = await fetch(
         `${HELIUS_API}/addresses/${wallet}/transactions?api-key=${HELIUS_KEY}&limit=50`
       );
@@ -52,12 +55,11 @@ export function usePositions() {
         // Method 1: Helius detected OPEN_POSITION type
         if (tx.type === "OPEN_POSITION") {
           seenSigs.add(tx.signature);
-          found.push(txToPosition(tx, tx.source || "Unknown"));
+          found.push(txToPosition(tx, tx.source || "Unknown", solPrice));
           continue;
         }
 
         // Method 2: Check if any instruction interacts with known DEX programs
-        // Skip explicit close/withdraw transactions
         if (tx.type === "CLOSE_POSITION" || tx.type === "WITHDRAW") continue;
         
         if (tx.instructions) {
@@ -65,7 +67,7 @@ export function usePositions() {
             const dex = DEX_PROGRAMS[ix.programId];
             if (dex) {
               seenSigs.add(tx.signature);
-              found.push(txToPosition(tx, dex));
+              found.push(txToPosition(tx, dex, solPrice));
               break;
             }
           }
@@ -91,43 +93,47 @@ export function usePositions() {
   return { positions, loading, refetch: fetchPositions };
 }
 
-function txToPosition(tx: HeliusTx, dex: string): Position {
-  // Extract deposited tokens (skip NFT mints — amount=1 with no known symbol)
+async function fetchSolPrice(): Promise<number> {
+  try {
+    const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
+    const data = await res.json();
+    return data.solana?.usd || 190;
+  } catch {
+    return 190;
+  }
+}
+
+let cachedSolPrice = 0;
+
+function txToPosition(tx: HeliusTx, dex: string, solPrice: number): Position {
+  // Use TOKEN transfers only (includes wrapped SOL). Skip NFT mints.
+  const wallet = tx.nativeTransfers?.[0]?.fromUserAccount || "";
   const deposits = tx.tokenTransfers?.filter(t => {
     if (t.tokenAmount <= 0) return false;
-    // Skip NFT position mints (amount exactly 1 and not a known token)
     if (t.tokenAmount === 1 && !KNOWN_MINTS[t.mint]) return false;
-    // Only outgoing from user
-    const wallet = tx.nativeTransfers?.[0]?.fromUserAccount;
-    return wallet && t.fromUserAccount === wallet;
+    return t.fromUserAccount === wallet;
   }) || [];
 
-  // Also check SOL transfers (native)
-  const wallet = tx.nativeTransfers?.[0]?.fromUserAccount;
-  const solOut = tx.nativeTransfers
-    ?.filter(t => t.fromUserAccount === wallet && t.amount > 10000000) // > 0.01 SOL (skip rent/fees)
-    .reduce((sum, t) => sum + t.amount, 0) || 0;
-  const hasSolDeposit = solOut > 10000000; // > 0.01 SOL
-
-  // Build pair name
+  // Build pair from deposited tokens
   const symbols: string[] = [];
-  if (hasSolDeposit) symbols.push("SOL");
+  let totalUsd = 0;
+
   for (const d of deposits) {
     const sym = formatMint(d.mint);
     if (!symbols.includes(sym)) symbols.push(sym);
+
+    // Calculate USD
+    if (STABLES.includes(d.mint)) {
+      totalUsd += d.tokenAmount;
+    } else if (d.mint === "So11111111111111111111111111111111111111112") {
+      totalUsd += d.tokenAmount * solPrice;
+    }
   }
+
   const pair = symbols.length >= 2 ? `${symbols[0]}/${symbols[1]}` : symbols.length === 1 ? `${symbols[0]}/...` : "LP Position";
 
-  // Calculate USD value of deposit
-  const solUsd = hasSolDeposit ? (solOut / 1e9) * SOL_PRICE : 0;
-  const tokenUsd = deposits.reduce((sum, d) => {
-    if (STABLES.includes(d.mint)) return sum + d.tokenAmount;
-    return sum;
-  }, 0);
-  const totalUsd = solUsd + tokenUsd;
-
   return {
-    id: tx.signature.slice(0, 12),
+    id: tx.signature,
     pair,
     dex,
     deposited: totalUsd > 0 ? `$${totalUsd.toFixed(2)}` : "-",
@@ -144,8 +150,6 @@ function txToPosition(tx: HeliusTx, dex: string): Position {
   };
 }
 
-// Approximate SOL price (fetched at load time would be better, but this works for hackathon)
-const SOL_PRICE = 195;
 const STABLES = [
   "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
   "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", // USDT
