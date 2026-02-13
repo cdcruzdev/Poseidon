@@ -1,21 +1,46 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { usePositions } from "@/hooks/usePositions";
 import { useClosePosition } from "@/hooks/useClosePosition";
+import { useRebalanceToggle } from "@/hooks/useRebalanceToggle";
 import PositionList from "@/components/PositionList";
+
+const AUTO_REFRESH_MS = 2 * 60 * 1000; // 2 minutes
 
 export default function MyPositions() {
   const { connected } = useWallet();
   const { setVisible } = useWalletModal();
-  const { positions, loading, refetch } = usePositions();
+  const { positions, loading, refreshing: hookRefreshing, refetch } = usePositions();
   const { closePosition } = useClosePosition();
+  const { toggle: toggleRebalance, toggling: rebalanceTogglingMint } = useRebalanceToggle();
   const [mounted, setMounted] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Track last refresh time
+  useEffect(() => {
+    if (!loading && !hookRefreshing && positions.length > 0) {
+      setLastRefresh(new Date());
+    }
+  }, [loading, hookRefreshing, positions.length]);
+
+  // Auto-refresh every 2 minutes
+  useEffect(() => {
+    if (!connected) return;
+    const interval = setInterval(() => {
+      refetch();
+    }, AUTO_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [connected, refetch]);
+
+  const handleManualRefresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   const handleClose = useCallback(async (posId: string) => {
     const pos = positions.find(p => p.id === posId);
@@ -41,6 +66,14 @@ export default function MyPositions() {
       setClosingId(null);
     }
   }, [positions, closePosition, refetch]);
+
+  const handleRebalanceToggle = useCallback(async (positionMint: string, currentlyEnabled: boolean) => {
+    const newState = await toggleRebalance(positionMint, currentlyEnabled);
+    if (newState !== currentlyEnabled) {
+      // Refetch positions to update rebalance state from chain
+      setTimeout(() => refetch(), 1500);
+    }
+  }, [toggleRebalance, refetch]);
 
   if (!mounted) return <PositionList positions={[]} loading={true} />;
 
@@ -78,6 +111,11 @@ export default function MyPositions() {
         emptyMessage="No positions found. Deposit liquidity to get started."
         onClosePosition={handleClose}
         closingId={closingId}
+        onRefresh={handleManualRefresh}
+        refreshing={hookRefreshing}
+        lastRefresh={lastRefresh}
+        onRebalanceToggle={handleRebalanceToggle}
+        rebalanceTogglingMint={rebalanceTogglingMint}
       />
     </div>
   );

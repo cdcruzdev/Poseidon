@@ -101,7 +101,7 @@ export function useClosePosition() {
     });
 
     // Build close transaction using SDK
-    const closeTxBuilder = await positionAccount.closePosition(
+    const closeTxBuilder = await (positionAccount as any).closePosition(
       slippage,
       undefined, // destinationWallet (defaults to owner)
       undefined, // positionWallet

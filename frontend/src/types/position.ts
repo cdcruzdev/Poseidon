@@ -18,4 +18,5 @@ export interface Position {
   positionAddress?: string;
   poolAddress?: string;
   txSignature?: string;
+  autoRebalance?: boolean;
 }

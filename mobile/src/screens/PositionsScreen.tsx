@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
   ImageBackground, RefreshControl, StatusBar,
 } from 'react-native';
 // StatusBar.currentHeight used for safe area padding
@@ -12,6 +12,15 @@ import { StatusDot } from '../components/StatusDot';
 import { SharedHeader } from '../components/SharedHeader';
 import { ConnectWalletButton } from '../components/ConnectWalletButton';
 import { useWallet } from '../contexts/WalletContext';
+
+const DEX_LOGOS: Record<string, any> = {
+  Meteora: require('../../assets/meteora-logo.png'),
+  meteora: require('../../assets/meteora-logo.png'),
+  Orca: require('../../assets/orca-logo.png'),
+  orca: require('../../assets/orca-logo.png'),
+  Raydium: require('../../assets/raydium-logo.png'),
+  raydium: require('../../assets/raydium-logo.png'),
+};
 
 // Position data will come from the API when wallet is connected
 interface Position {
@@ -113,7 +122,12 @@ export function PositionsScreen({ navigation }: any) {
                     <View style={styles.positionHeader}>
                       <View>
                         <Text style={styles.positionPair}>{item.pair}</Text>
-                        <Text style={styles.positionDex}>{item.dex}</Text>
+                        <View style={styles.dexRow}>
+                          {DEX_LOGOS[item.dex] && (
+                            <Image source={DEX_LOGOS[item.dex]} style={styles.dexLogo} />
+                          )}
+                          <Text style={styles.positionDex}>{item.dex}</Text>
+                        </View>
                       </View>
                       <View style={styles.positionRight}>
                         <StatusDot status={item.status} />
@@ -176,7 +190,9 @@ const styles = StyleSheet.create({
   positionCard: { marginBottom: 10 },
   positionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   positionPair: { color: colors.text.primary, fontSize: 17, fontWeight: '700' },
-  positionDex: { color: colors.text.faint, fontSize: 12, marginTop: 2 },
+  dexRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  dexLogo: { width: 14, height: 14, borderRadius: 7 },
+  positionDex: { color: colors.text.faint, fontSize: 12 },
   positionRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   positionStatus: { color: colors.text.muted, fontSize: 12 },
 

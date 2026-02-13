@@ -85,7 +85,7 @@ export default function AgentPerformance() {
 
   const p = period;
 
-  const stats = [
+  const stats: { label: string; value: string; color: string; sub?: string }[] = [
     {
       label: "Fees Earned",
       value: p.feesEarned,

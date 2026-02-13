@@ -11,9 +11,14 @@ interface PositionListProps {
   perPage?: number;
   onClosePosition?: (id: string) => void;
   closingId?: string | null;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  lastRefresh?: Date | null;
+  onRebalanceToggle?: (positionMint: string, currentlyEnabled: boolean) => void;
+  rebalanceTogglingMint?: string | null;
 }
 
-export default function PositionList({ positions, loading, emptyMessage = "No positions yet.", perPage = 3, onClosePosition, closingId }: PositionListProps) {
+export default function PositionList({ positions, loading, emptyMessage = "No positions yet.", perPage = 3, onClosePosition, closingId, onRefresh, refreshing, lastRefresh, onRebalanceToggle, rebalanceTogglingMint }: PositionListProps) {
   const [expandedPosition, setExpandedPosition] = useState<string | null>(null);
   const [posPage, setPosPage] = useState(0);
   const [sortBy, setSortBy] = useState<"pnl" | "apy" | "value">("value");
@@ -31,7 +36,8 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
   const safePage = Math.min(posPage, Math.max(totalPages - 1, 0));
   const pagePositions = sorted.slice(safePage * perPage, (safePage + 1) * perPage);
 
-  if (loading) {
+  // Only show full loading spinner on initial load (no positions yet)
+  if (loading && positions.length === 0) {
     return (
       <div className="bg-[#0d1926]/80 backdrop-blur-sm border border-[#1a3050] rounded-2xl p-12 text-center">
         <div className="w-8 h-8 mx-auto border-2 border-[#1a3050] border-t-[#7ec8e8] rounded-full animate-spin" />
@@ -39,7 +45,7 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
     );
   }
 
-  if (positions.length === 0) {
+  if (!loading && positions.length === 0) {
     return (
       <div className="bg-[#0d1926]/80 backdrop-blur-sm border border-[#1a3050] rounded-2xl p-12 text-center">
         <p className="text-sm text-[#8899aa]">{emptyMessage}</p>
@@ -53,7 +59,7 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
         <h2 className="text-xl tracking-wider text-white" style={{ fontFamily: "var(--font-bebas)" }}>
           MY POSITIONS ({sorted.length})
         </h2>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {(["value", "apy", "pnl"] as const).map(opt => (
             <button
               key={opt}
@@ -67,6 +73,24 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
               {opt === "value" ? "Value" : opt === "apy" ? "Yield" : "P&L"}
             </button>
           ))}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={refreshing}
+              title={lastRefresh ? `Last updated ${lastRefresh.toLocaleTimeString()}` : "Refresh positions"}
+              className="p-1.5 rounded-lg text-[#5a7090] hover:text-[#7ec8e8] hover:bg-[#1a3050]/50 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                className={refreshing ? "animate-spin" : ""}
+              >
+                <path d="M21 2v6h-6" />
+                <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                <path d="M3 22v-6h6" />
+                <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -79,6 +103,8 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
             onToggle={() => setExpandedPosition(expandedPosition === pos.id ? null : pos.id)}
             onClose={onClosePosition}
             closing={closingId === pos.id}
+            onRebalanceToggle={onRebalanceToggle}
+            rebalanceToggling={rebalanceTogglingMint === pos.positionMint}
           />
         ))}
       </div>

@@ -14,17 +14,15 @@ use solana_program::{
 
 entrypoint!(process_instruction);
 
-// sha256("global:enable_rebalance")[0..8]
+// Instruction discriminators: sha256("global:<name>")[0..8]
 const IX_ENABLE: [u8; 8] = [94, 247, 51, 161, 142, 177, 235, 11];
-// sha256("global:disable_rebalance")[0..8]
 const IX_DISABLE: [u8; 8] = [170, 206, 89, 64, 74, 71, 94, 214];
 
-// Account discriminator = sha256("account:RebalanceConfig")[0..8]
-// We use the Anchor convention: sha256("account:RebalanceConfig")
-// sha256("account:RebalanceConfig")[0..8]
+// Account discriminator: sha256("account:RebalanceConfig")[0..8]
 const ACCOUNT_DISC: [u8; 8] = [111, 187, 136, 118, 41, 244, 175, 141];
 
-const ACCOUNT_SIZE: usize = 8 + 32 + 1 + 2 + 2 + 8 + 8; // 61 bytes
+// Per-position layout: disc(8) + owner(32) + position_mint(32) + enabled(1) + max_slippage_bps(2) + min_yield_bps(2) + created_at(8) + updated_at(8) = 93
+const ACCOUNT_SIZE: usize = 8 + 32 + 32 + 1 + 2 + 2 + 8 + 8;
 const SEED: &[u8] = b"rebalance";
 
 pub fn process_instruction(
@@ -52,10 +50,11 @@ fn process_enable(
     accounts: &[AccountInfo],
     data: &[u8],
 ) -> ProgramResult {
-    // Frontend sends: [owner, pda, system_program]
+    // Accounts: [owner, config_pda, position_mint, system_program]
     let iter = &mut accounts.iter();
     let owner = next_account_info(iter)?;
     let config_account = next_account_info(iter)?;
+    let position_mint = next_account_info(iter)?;
     let system_program = next_account_info(iter)?;
 
     if !owner.is_signer {
@@ -68,9 +67,9 @@ fn process_enable(
     let max_slippage_bps = u16::from_le_bytes([data[0], data[1]]);
     let min_yield_bps = u16::from_le_bytes([data[2], data[3]]);
 
-    // Derive PDA
+    // Derive per-position PDA: ["rebalance", owner, position_mint]
     let (expected_pda, bump) = Pubkey::find_program_address(
-        &[SEED, owner.key.as_ref()],
+        &[SEED, owner.key.as_ref(), position_mint.key.as_ref()],
         program_id,
     );
     if *config_account.key != expected_pda {
@@ -78,12 +77,11 @@ fn process_enable(
         return Err(ProgramError::InvalidSeeds);
     }
 
-    let signer_seeds: &[&[u8]] = &[SEED, owner.key.as_ref(), &[bump]];
+    let signer_seeds: &[&[u8]] = &[SEED, owner.key.as_ref(), position_mint.key.as_ref(), &[bump]];
 
     let clock = Clock::get()?;
     let now = clock.unix_timestamp;
 
-    // If account doesn't exist yet, create it
     if config_account.data_is_empty() {
         let rent = Rent::get()?;
         let lamports = rent.minimum_balance(ACCOUNT_SIZE);
@@ -100,11 +98,11 @@ fn process_enable(
             &[signer_seeds],
         )?;
 
-        // Write fresh account
         let mut account_data = config_account.try_borrow_mut_data()?;
         write_config(
             &mut account_data,
             owner.key,
+            position_mint.key,
             true,
             max_slippage_bps,
             min_yield_bps,
@@ -112,20 +110,21 @@ fn process_enable(
             now,
         );
     } else {
-        // Account exists — verify owner matches
+        // Account exists — verify owner
         let account_data = config_account.try_borrow_data()?;
         let stored_owner = Pubkey::try_from(&account_data[8..40])
             .map_err(|_| ProgramError::InvalidAccountData)?;
         if stored_owner != *owner.key {
             return Err(ProgramError::IllegalOwner);
         }
-        let created_at = i64::from_le_bytes(account_data[45..53].try_into().unwrap());
+        let created_at = i64::from_le_bytes(account_data[77..85].try_into().unwrap());
         drop(account_data);
 
         let mut account_data = config_account.try_borrow_mut_data()?;
         write_config(
             &mut account_data,
             owner.key,
+            position_mint.key,
             true,
             max_slippage_bps,
             min_yield_bps,
@@ -134,7 +133,7 @@ fn process_enable(
         );
     }
 
-    msg!("Rebalance enabled for {}", owner.key);
+    msg!("Rebalance enabled for position {} by {}", position_mint.key, owner.key);
     Ok(())
 }
 
@@ -142,18 +141,19 @@ fn process_disable(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
-    // Frontend sends: [owner, pda]
+    // Accounts: [owner, config_pda, position_mint]
     let iter = &mut accounts.iter();
     let owner = next_account_info(iter)?;
     let config_account = next_account_info(iter)?;
+    let position_mint = next_account_info(iter)?;
 
     if !owner.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    // Verify PDA
+    // Verify per-position PDA
     let (expected_pda, _bump) = Pubkey::find_program_address(
-        &[SEED, owner.key.as_ref()],
+        &[SEED, owner.key.as_ref(), position_mint.key.as_ref()],
         program_id,
     );
     if *config_account.key != expected_pda {
@@ -172,7 +172,7 @@ fn process_disable(
     }
     drop(account_data);
 
-    // Close the account (transfer lamports back to owner, zero data)
+    // Close account — refund rent to owner
     let dest_lamports = owner.lamports();
     let source_lamports = config_account.lamports();
     **owner.try_borrow_mut_lamports()? = dest_lamports
@@ -185,25 +185,26 @@ fn process_disable(
         *byte = 0;
     }
 
-    msg!("Rebalance disabled for {}", owner.key);
+    msg!("Rebalance disabled for position {} by {}", position_mint.key, owner.key);
     Ok(())
 }
 
 fn write_config(
     data: &mut [u8],
     owner: &Pubkey,
+    position_mint: &Pubkey,
     enabled: bool,
     max_slippage_bps: u16,
     min_yield_bps: u16,
     created_at: i64,
     updated_at: i64,
 ) {
-    // 8-byte discriminator (zeros for now — we'll set the real one)
     data[..8].copy_from_slice(&ACCOUNT_DISC);
-    data[8..40].copy_from_slice(owner.as_ref());
-    data[40] = if enabled { 1 } else { 0 };
-    data[41..43].copy_from_slice(&max_slippage_bps.to_le_bytes());
-    data[43..45].copy_from_slice(&min_yield_bps.to_le_bytes());
-    data[45..53].copy_from_slice(&created_at.to_le_bytes());
-    data[53..61].copy_from_slice(&updated_at.to_le_bytes());
+    data[8..40].copy_from_slice(owner.as_ref());          // owner: 8..40
+    data[40..72].copy_from_slice(position_mint.as_ref());  // position_mint: 40..72
+    data[72] = if enabled { 1 } else { 0 };               // enabled: 72
+    data[73..75].copy_from_slice(&max_slippage_bps.to_le_bytes()); // 73..75
+    data[75..77].copy_from_slice(&min_yield_bps.to_le_bytes());    // 75..77
+    data[77..85].copy_from_slice(&created_at.to_le_bytes());       // 77..85
+    data[85..93].copy_from_slice(&updated_at.to_le_bytes());       // 85..93
 }

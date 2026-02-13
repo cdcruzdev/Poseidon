@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ImageBackground,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ImageBackground, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
 import { StatusDot } from '../components/StatusDot';
+
+const DEX_LOGOS: Record<string, any> = {
+  Meteora: require('../../assets/meteora-logo.png'),
+  meteora: require('../../assets/meteora-logo.png'),
+  Orca: require('../../assets/orca-logo.png'),
+  orca: require('../../assets/orca-logo.png'),
+  Raydium: require('../../assets/raydium-logo.png'),
+  raydium: require('../../assets/raydium-logo.png'),
+};
 
 const MOCK_ACTIVITY = [
   { id: '1', type: 'rebalance', description: 'Auto-rebalanced to $95.20 - $105.80', timestamp: '2 min ago' },
@@ -44,7 +53,12 @@ export function PositionDetailScreen({ route }: any) {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.pair}>{position.pair}</Text>
-          <Text style={styles.dex}>{position.dex}</Text>
+          <View style={styles.dexRow}>
+            {DEX_LOGOS[position.dex] && (
+              <Image source={DEX_LOGOS[position.dex]} style={styles.dexLogo} />
+            )}
+            <Text style={styles.dex}>{position.dex}</Text>
+          </View>
         </View>
         <StatusDot status={position.status} />
       </View>
@@ -155,7 +169,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   headerLeft: {},
   pair: { color: colors.text.primary, fontSize: 28, fontWeight: '900', letterSpacing: 1 },
-  dex: { color: colors.text.faint, fontSize: 13, marginTop: 2 },
+  dexRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  dexLogo: { width: 16, height: 16, borderRadius: 8 },
+  dex: { color: colors.text.faint, fontSize: 13 },
   valueLabel: { color: colors.text.muted, fontSize: 13 },
   value: { color: colors.text.primary, fontSize: 36, fontWeight: '800', marginVertical: 4 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 12 },
