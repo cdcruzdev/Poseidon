@@ -57,15 +57,7 @@ export default function PositionCard({
               )}
               {pos.dex}
             </span>
-            <span
-              className="text-xs px-2 py-0.5 rounded"
-              style={{
-                color: pos.status === "in-range" ? "#4ade80" : "#f87171",
-                backgroundColor: pos.status === "in-range" ? "#4ade8015" : "#f8717115",
-              }}
-            >
-              {pos.status === "in-range" ? "● In Range" : "○ Out of Range"}
-            </span>
+            {/* TODO: Re-enable range badge when range detection is accurate across all DEXs */}
             {/* TODO: Re-enable when per-position rebalance is funded
             <span
               className="text-xs px-2 py-0.5 rounded"
