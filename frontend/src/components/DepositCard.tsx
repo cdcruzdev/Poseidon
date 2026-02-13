@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -18,6 +18,27 @@ import StrategyPresets, { type Strategy } from "@/components/StrategyPresets";
 import AnimateHeight from "@/components/AnimateHeight";
 import { TOKENS, type Token } from "@/lib/tokens";
 import { API_BASE, getPools, type Pool } from "@/lib/api";
+
+function parseTxError(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (lower.includes("user rejected") || lower.includes("user refused") || lower.includes("user cancelled"))
+    return "Transaction cancelled.";
+  if (lower.includes("insufficient lamports") || lower.includes("insufficient funds") || lower.includes("0x1"))
+    return "Insufficient SOL for transaction fees. Try a slightly smaller amount.";
+  if (lower.includes("insufficient") && lower.includes("balance"))
+    return "Insufficient token balance.";
+  if (lower.includes("blockhash") || lower.includes("expired"))
+    return "Transaction expired. Please try again.";
+  if (lower.includes("timeout") || lower.includes("timed out"))
+    return "Transaction timed out. Please try again.";
+  if (lower.includes("slippage") || lower.includes("exceeds desired"))
+    return "Price moved too much (slippage). Try again or increase slippage tolerance.";
+  if (lower.includes("simulation failed"))
+    return "Transaction simulation failed. Try a smaller amount or different pool.";
+  // Fallback: truncate if too long
+  if (raw.length > 120) return raw.slice(0, 100) + "...";
+  return raw;
+}
 
 export default function DepositCard() {
   const { publicKey, connected, connecting } = useWallet();
@@ -91,7 +112,7 @@ export default function DepositCard() {
     fetchAllBalances();
   }, [publicKey, connection]);
 
-  const SOL_RENT_RESERVE = 0.003;
+  const SOL_RENT_RESERVE = 0.01;
   // Show full balance in UI, but cap MAX at balance - rent reserve
   const balanceA = tokenA ? tokenBalances[tokenA.symbol] : undefined;
   const balanceB = tokenB ? tokenBalances[tokenB.symbol] : undefined;
@@ -129,7 +150,7 @@ export default function DepositCard() {
         });
       } catch (err) {
         console.error("Failed to fetch prices:", err);
-        // No fallback prices — user can enter both amounts manually
+        // No fallback prices � user can enter both amounts manually
         setTokenPrices({ tokenA: 0, tokenB: 0 });
       }
     };
@@ -299,7 +320,8 @@ export default function DepositCard() {
         setTxSignature(null);
       }, 5000);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Transaction failed";
+      const raw = err instanceof Error ? err.message : "Transaction failed";
+      const message = parseTxError(raw);
       setTxError(message);
       setTxState("idle");
     }
@@ -375,7 +397,7 @@ export default function DepositCard() {
             tokenBalances={tokenBalances}
           />
           {tokenPrices.tokenA === 0 || tokenPrices.tokenB === 0 ? (
-            <p className="text-[10px] text-[#5a7090] px-1">Price unavailable — enter both amounts manually.</p>
+            <p className="text-[10px] text-[#5a7090] px-1">Price unavailable � enter both amounts manually.</p>
           ) : null}
 
           <div className="pt-2">
@@ -486,7 +508,7 @@ export default function DepositCard() {
                     rel="noopener noreferrer"
                     className="text-xs text-[#7ec8e8] hover:underline"
                   >
-                    View on Solscan →
+                    View on Solscan ?
                   </a>
                 )}
               </div>
