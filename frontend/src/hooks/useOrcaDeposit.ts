@@ -93,9 +93,9 @@ export function useOrcaDeposit() {
           poolTokenBDecimals
         );
 
-        // Calculate tick range: ±5% around current price (tighter = less token ratio skew)
-        const priceLower = currentPrice.mul(new Decimal(0.95));
-        const priceUpper = currentPrice.mul(new Decimal(1.05));
+        // Calculate tick range: ±10% around current price
+        const priceLower = currentPrice.mul(new Decimal(0.9));
+        const priceUpper = currentPrice.mul(new Decimal(1.1));
 
         const tickLower = PriceMath.priceToInitializableTickIndex(
           priceLower,

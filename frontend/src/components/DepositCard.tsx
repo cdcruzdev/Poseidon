@@ -113,13 +113,17 @@ export default function DepositCard() {
   }, [publicKey, connection]);
 
   const SOL_RENT_RESERVE = 0.01;
-  // Show full balance in UI, but cap MAX at balance - rent reserve
+  const DEPOSIT_BUFFER = 0.02; // 2% buffer so wallet simulation always shows less than UI balance
+  // Show full balance in UI, but cap MAX at balance minus reserves
   const balanceA = tokenA ? tokenBalances[tokenA.symbol] : undefined;
   const balanceB = tokenB ? tokenBalances[tokenB.symbol] : undefined;
-  const maxBalanceA = balanceA !== undefined && tokenA?.symbol === "SOL"
-    ? Math.max(0, balanceA - SOL_RENT_RESERVE) : balanceA;
-  const maxBalanceB = balanceB !== undefined && tokenB?.symbol === "SOL"
-    ? Math.max(0, balanceB - SOL_RENT_RESERVE) : balanceB;
+  const applyBuffer = (bal: number, symbol: string) => {
+    let reserved = bal * DEPOSIT_BUFFER; // 2% buffer
+    if (symbol === "SOL") reserved = Math.max(reserved, SOL_RENT_RESERVE);
+    return Math.max(0, bal - reserved);
+  };
+  const maxBalanceA = balanceA !== undefined && tokenA ? applyBuffer(balanceA, tokenA.symbol) : balanceA;
+  const maxBalanceB = balanceB !== undefined && tokenB ? applyBuffer(balanceB, tokenB.symbol) : balanceB;
 
   // Fetch token prices from CoinGecko
   useEffect(() => {
@@ -287,7 +291,7 @@ export default function DepositCard() {
         tokenBDecimals: tokenB.decimals,
         tokenAMint: tokenA.mint,
         tokenBMint: tokenB.mint,
-        slippageBps: 50, // 0.5% slippage
+        slippageBps: 100, // 1% slippage (Orca recommended)
       };
 
       let result;
