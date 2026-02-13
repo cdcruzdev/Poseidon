@@ -22,9 +22,14 @@ All deposits have auto-rebalancing enabled by default. The Poseidon agent monito
 - On-chain rebalance config program deployed to mainnet (`HLsgAVzjjBaBR9QCLqV3vjC9LTnR2xtmtB77j1EJQBsZ`)
 - Per-position opt-out toggle coming soon (program upgrade ready, pending funding)
 
+### In Progress
+
+- **Close Position** -- Withdraw liquidity back to wallet via DEX-specific withdrawal transactions (Orca/Raydium/Meteora)
+- **Meteora position values** -- DLMM bin-based liquidity parsing for deposited/current USD values
+- **Per-position rebalance controls** -- Toggle auto-rebalance per position with custom yield targets
+
 ### Roadmap
 
-- **Per-position rebalance controls** -- Toggle auto-rebalance per position with custom yield targets
 - **Privacy Layer** -- Arcium MPC integration for encrypted position management (devnet prototype complete)
 
 ## Architecture
