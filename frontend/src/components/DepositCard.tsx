@@ -158,20 +158,27 @@ export default function DepositCard() {
     fetchPrices();
   }, [tokenA, tokenB]);
 
-  // Auto-calculate token B amount based on USD value (50/50 split)
-  // Skip if user manually edited token B or prices are unavailable
-  useEffect(() => {
-    if (!manualTokenB && amountA && tokenPrices.tokenA > 0 && tokenPrices.tokenB > 0) {
-      const usdValueA = parseFloat(amountA) * tokenPrices.tokenA;
-      const amountBCalc = usdValueA / tokenPrices.tokenB;
-      setAmountB(amountBCalc.toFixed(6));
-    }
-  }, [amountA, tokenPrices.tokenA, tokenPrices.tokenB, manualTokenB]);
+  // Track which field was last edited
+  const lastEditRef = useRef<"a" | "b">("a");
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Reset manualTokenB when amountA changes (user is re-entering from scratch)
+  // Debounced auto-fill: A→B and B→A
   useEffect(() => {
-    setManualTokenB(false);
-  }, [amountA]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (tokenPrices.tokenA <= 0 || tokenPrices.tokenB <= 0) return;
+
+    debounceRef.current = setTimeout(() => {
+      if (lastEditRef.current === "a" && amountA && !manualTokenB) {
+        const usdVal = parseFloat(amountA) * tokenPrices.tokenA;
+        setAmountB((usdVal / tokenPrices.tokenB).toFixed(6));
+      } else if (lastEditRef.current === "b" && amountB && manualTokenB) {
+        const usdVal = parseFloat(amountB) * tokenPrices.tokenB;
+        setAmountA((usdVal / tokenPrices.tokenA).toFixed(6));
+      }
+    }, 500);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [amountA, amountB, tokenPrices.tokenA, tokenPrices.tokenB, manualTokenB]);
 
   const lastPairRef = useRef("");
 
@@ -369,7 +376,7 @@ export default function DepositCard() {
             excludeToken={tokenB}
             label="You provide"
             amount={amountA}
-            onAmountChange={setAmountA}
+            onAmountChange={(val) => { lastEditRef.current = "a"; setManualTokenB(false); setAmountA(val); }}
             balance={balanceA}
             maxBalance={maxBalanceA}
             usdPrice={tokenPrices.tokenA}
@@ -390,7 +397,7 @@ export default function DepositCard() {
             excludeToken={tokenA}
             label="And"
             amount={amountB}
-            onAmountChange={(val) => { setManualTokenB(true); setAmountB(val); }}
+            onAmountChange={(val) => { lastEditRef.current = "b"; setManualTokenB(true); setAmountB(val); }}
             balance={balanceB}
             maxBalance={maxBalanceB}
             usdPrice={tokenPrices.tokenB}
@@ -462,9 +469,13 @@ export default function DepositCard() {
           </div>
 
           {canDeposit && (
-            <div className="border-t border-[#1a3050] pt-3">
+            <div className="border-t border-[#1a3050] pt-3 space-y-1">
               <div className="flex justify-between text-sm">
-                <span className="text-[#5a7090]">Fees</span>
+                <span className="text-[#5a7090]">Poseidon Fee</span>
+                <span className="text-[#8899aa]">0.1%</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#5a7090]">Network</span>
                 <span className="text-[#8899aa]">~0.00025 SOL</span>
               </div>
             </div>

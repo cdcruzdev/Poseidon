@@ -58,7 +58,7 @@ export default function AutoRebalance({
         <div className="mt-2 p-3 bg-[#0a1520]/60 rounded-lg text-xs text-[#8899aa]">
           Our agent monitors your position 24/7. If the price moves out of range 
           or yield drops below your target, we automatically rebalance to the optimal range.
-          This setting is stored on-chain via the Poseidon rebalance program.
+          5% fee on earned fees. This setting is stored on-chain via the Poseidon rebalance program.
         </div>
       </AnimateHeight>
 
