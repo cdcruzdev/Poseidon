@@ -13,8 +13,8 @@ interface AutoRebalanceProps {
 }
 
 const YIELD_OPTIONS = [
-  { value: "0.05", label: "0.05%" },
   { value: "0.10", label: "0.10%" },
+  { value: "0.25", label: "0.25%" },
   { value: "0.50", label: "0.50%" },
 ];
 
