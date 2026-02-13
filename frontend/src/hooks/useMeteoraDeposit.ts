@@ -2,7 +2,12 @@
 
 import { useState, useCallback } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
+import { createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+
+const POSEIDON_TREASURY = new PublicKey("7AGZL8i43P4LByeLn491K2TyWGqwJbeUMNCDF3QsnpRj");
+const FEE_BPS = 10; // 0.1%
+const SOL_MINT = "So11111111111111111111111111111111111111112";
 import DLMM, { StrategyType } from "@meteora-ag/dlmm";
 import BN from "bn.js";
 import Decimal from "decimal.js";
@@ -108,6 +113,25 @@ export default function useMeteoraDeposit() {
             slippage: slippageBps / 100,
           });
 
+        // Add 0.1% Poseidon fee instructions
+        const feeX = new BN(totalXAmount.muln(FEE_BPS).divn(10000).toString());
+        const feeY = new BN(totalYAmount.muln(FEE_BPS).divn(10000).toString());
+        const poolMintX = dlmmPool.tokenX.publicKey;
+        const poolMintY = dlmmPool.tokenY.publicKey;
+
+        for (const [mint, feeAmt] of [[poolMintX, feeX], [poolMintY, feeY]] as [PublicKey, BN][]) {
+          if (feeAmt.lten(0)) continue;
+          if (mint.toBase58() === SOL_MINT) {
+            createPositionTx.add(SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: POSEIDON_TREASURY, lamports: feeAmt.toNumber() }));
+          } else {
+            const userAta = await getAssociatedTokenAddress(mint, publicKey);
+            const treasuryAta = await getAssociatedTokenAddress(mint, POSEIDON_TREASURY);
+            const acct = await connection.getAccountInfo(treasuryAta);
+            if (!acct) createPositionTx.add(createAssociatedTokenAccountInstruction(publicKey, treasuryAta, POSEIDON_TREASURY, mint));
+            createPositionTx.add(createTransferInstruction(userAta, treasuryAta, publicKey, BigInt(feeAmt.toString())));
+          }
+        }
+
         // Set transaction metadata
         const { blockhash, lastValidBlockHeight } =
           await connection.getLatestBlockhash();
@@ -120,11 +144,19 @@ export default function useMeteoraDeposit() {
         // Send via wallet adapter (wallet signs + sends)
         const signature = await sendTransaction(createPositionTx, connection);
 
-        // Confirm
-        await connection.confirmTransaction(
-          { signature, blockhash, lastValidBlockHeight },
-          "confirmed"
-        );
+        // Confirm via polling (more resilient than confirmTransaction)
+        let confirmed = false;
+        for (let attempt = 0; attempt < 60; attempt++) {
+          await new Promise(r => setTimeout(r, 1500));
+          const resp = await connection.getSignatureStatus(signature);
+          const status = resp?.value;
+          if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
+            if (status.err) throw new Error(`Transaction failed: ${JSON.stringify(status.err)}`);
+            confirmed = true;
+            break;
+          }
+        }
+        if (!confirmed) throw new Error("Transaction confirmation timed out. Check Solscan for status.");
 
         // Persist the position keypair to localStorage so the user can manage/close
         // the position later. The keypair is required to sign withdrawal transactions

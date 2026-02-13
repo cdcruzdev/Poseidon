@@ -3,8 +3,14 @@
 import { useState, useCallback } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Raydium, TickUtils, PoolUtils, type ApiV3PoolInfoConcentratedItem } from "@raydium-io/raydium-sdk-v2";
+import { PublicKey, Transaction, SystemProgram } from "@solana/web3.js";
+import { createTransferInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import Decimal from "decimal.js";
 import BN from "bn.js";
+
+const POSEIDON_TREASURY = new PublicKey("7AGZL8i43P4LByeLn491K2TyWGqwJbeUMNCDF3QsnpRj");
+const FEE_BPS = 10; // 0.1%
+const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 export interface DepositResult {
   signature: string;
@@ -172,6 +178,37 @@ export function useRaydiumDeposit() {
           withMetadata: "create",
           txVersion: 0 as any,
         });
+
+        // 6b. Send 0.1% Poseidon fee before the deposit
+        if (publicKey && signAllTransactions) {
+          const feeTx = new Transaction();
+          const feeA = amountABN.muln(FEE_BPS).divn(10000);
+          const feeB = amountBBN.muln(FEE_BPS).divn(10000);
+          const mintA = new PublicKey(isReversed ? tokenBMint : tokenAMint);
+          const mintB = new PublicKey(isReversed ? tokenAMint : tokenBMint);
+
+          for (const [mint, feeAmt] of [[mintA, feeA], [mintB, feeB]] as [PublicKey, BN][]) {
+            if (feeAmt.lten(0)) continue;
+            if (mint.toBase58() === SOL_MINT) {
+              feeTx.add(SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: POSEIDON_TREASURY, lamports: feeAmt.toNumber() }));
+            } else {
+              const userAta = await getAssociatedTokenAddress(mint, publicKey);
+              const treasuryAta = await getAssociatedTokenAddress(mint, POSEIDON_TREASURY);
+              const acct = await connection.getAccountInfo(treasuryAta);
+              if (!acct) feeTx.add(createAssociatedTokenAccountInstruction(publicKey, treasuryAta, POSEIDON_TREASURY, mint));
+              feeTx.add(createTransferInstruction(userAta, treasuryAta, publicKey, BigInt(feeAmt.toString())));
+            }
+          }
+
+          if (feeTx.instructions.length > 0) {
+            const { blockhash } = await connection.getLatestBlockhash();
+            feeTx.recentBlockhash = blockhash;
+            feeTx.feePayer = publicKey;
+            const [signedFee] = await signAllTransactions([feeTx]);
+            const feeSig = await connection.sendRawTransaction(signedFee.serialize());
+            await connection.confirmTransaction(feeSig, "confirmed");
+          }
+        }
 
         // 7. Execute transaction
         const { txId } = await execute({ sendAndConfirm: true });
