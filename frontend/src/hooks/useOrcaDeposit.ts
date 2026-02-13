@@ -190,19 +190,25 @@ export function useOrcaDeposit() {
           quote
         );
 
-        // Build all transactions and collect signers
-        const transactionsToSign: (Transaction | VersionedTransaction)[] = [];
-        const allSignerSets: { tx: Transaction; signers: any[] }[] = [];
+        // Bundle EVERYTHING into ONE transaction: init tick arrays + open position + fee
+        const combinedTx = new Transaction();
+        const allSigners: any[] = [];
 
+        // 1. Init tick array instructions (if needed)
         if (initTxBuilder) {
           const built = await initTxBuilder.build();
-          allSignerSets.push({ tx: built.transaction as Transaction, signers: built.signers });
+          const initTx = built.transaction as Transaction;
+          combinedTx.add(...initTx.instructions);
+          allSigners.push(...built.signers);
         }
 
+        // 2. Open position + add liquidity instructions
         const openBuilt = await openTxBuilder.build();
         const openTx = openBuilt.transaction as Transaction;
+        combinedTx.add(...openTx.instructions);
+        allSigners.push(...openBuilt.signers);
 
-        // Inject 0.1% Poseidon fee instructions INTO the deposit tx (atomic)
+        // 3. Poseidon 0.1% fee instructions
         const feeAmountA = new BN(tokenAmountABN.muln(FEE_BPS).divn(10000).toString());
         const feeAmountB = new BN(tokenAmountBBN.muln(FEE_BPS).divn(10000).toString());
         const mintA = isReversed ? new PublicKey(tokenBMint) : new PublicKey(tokenAMint);
@@ -211,63 +217,44 @@ export function useOrcaDeposit() {
         for (const [mint, feeAmt] of [[mintA, feeAmountA], [mintB, feeAmountB]] as [PublicKey, BN][]) {
           if (feeAmt.lten(0)) continue;
           if (mint.toBase58() === SOL_MINT) {
-            openTx.add(SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: POSEIDON_TREASURY, lamports: feeAmt.toNumber() }));
+            combinedTx.add(SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: POSEIDON_TREASURY, lamports: feeAmt.toNumber() }));
           } else {
             const userAta = await getAssociatedTokenAddress(mint, wallet.publicKey);
             const treasuryAta = await getAssociatedTokenAddress(mint, POSEIDON_TREASURY);
             const acct = await connection.getAccountInfo(treasuryAta);
-            if (!acct) openTx.add(createAssociatedTokenAccountInstruction(wallet.publicKey, treasuryAta, POSEIDON_TREASURY, mint));
-            openTx.add(createTransferInstruction(userAta, treasuryAta, wallet.publicKey, BigInt(feeAmt.toString())));
+            if (!acct) combinedTx.add(createAssociatedTokenAccountInstruction(wallet.publicKey, treasuryAta, POSEIDON_TREASURY, mint));
+            combinedTx.add(createTransferInstruction(userAta, treasuryAta, wallet.publicKey, BigInt(feeAmt.toString())));
           }
         }
 
-        allSignerSets.push({ tx: openTx, signers: openBuilt.signers });
-
-        // Set recent blockhash and fee payer, then partial-sign with any keypair signers
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-        for (const { tx: builtTx, signers } of allSignerSets) {
-          if ('recentBlockhash' in builtTx) {
-            // Legacy Transaction
-            builtTx.recentBlockhash = blockhash;
-            builtTx.feePayer = wallet.publicKey;
-            if (signers.length > 0) {
-              builtTx.partialSign(...signers);
-            }
-          } else if ('message' in builtTx) {
-            // VersionedTransaction - signers need to sign directly
-            if (signers.length > 0) {
-              (builtTx as any).sign(signers);
-            }
-          }
-          transactionsToSign.push(builtTx);
+        // Set blockhash, fee payer, partial-sign with keypair signers
+        const { blockhash } = await connection.getLatestBlockhash();
+        combinedTx.recentBlockhash = blockhash;
+        combinedTx.feePayer = wallet.publicKey;
+        if (allSigners.length > 0) {
+          combinedTx.partialSign(...allSigners);
         }
 
-        // Single wallet prompt for all transactions
-        const signedTxs = await signAllTransactions(transactionsToSign);
+        // ONE wallet prompt
+        const [signedTx] = await signAllTransactions([combinedTx]);
 
-        // Send transactions sequentially, confirming each before the next.
-        // The init tick array tx MUST be confirmed before the open position tx.
-        let signature = "";
-        for (let i = 0; i < signedTxs.length; i++) {
-          const rawTx = signedTxs[i].serialize();
-          const txSig = await connection.sendRawTransaction(rawTx, {
-            skipPreflight: false,
-          });
-          // Poll signature status with retry (more resilient than confirmTransaction)
-          let confirmed = false;
-          for (let attempt = 0; attempt < 60; attempt++) {
-            await new Promise(r => setTimeout(r, 1500));
-            const resp = await connection.getSignatureStatus(txSig);
-            const status = resp?.value;
-            if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
-              if (status.err) throw new Error(`Transaction failed: ${JSON.stringify(status.err)}`);
-              confirmed = true;
-              break;
-            }
+        // Send and confirm
+        const rawTx = signedTx.serialize();
+        const signature = await connection.sendRawTransaction(rawTx, { skipPreflight: false });
+
+        // Poll confirmation
+        let confirmed = false;
+        for (let attempt = 0; attempt < 60; attempt++) {
+          await new Promise(r => setTimeout(r, 1500));
+          const resp = await connection.getSignatureStatus(signature);
+          const status = resp?.value;
+          if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
+            if (status.err) throw new Error(`Transaction failed: ${JSON.stringify(status.err)}`);
+            confirmed = true;
+            break;
           }
-          if (!confirmed) throw new Error("Transaction confirmation timed out. Check Solscan for status.");
-          signature = txSig;
         }
+        if (!confirmed) throw new Error("Transaction confirmation timed out. Check Solscan for status.");
 
         return {
           signature,
