@@ -25,7 +25,7 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
       if (sortBy === "pnl") return parseFloat(b.pnl.replace(/[,$+]/g, "")) - parseFloat(a.pnl.replace(/[,$+]/g, ""));
       return parseFloat(b.current.replace(/[,$]/g, "")) - parseFloat(a.current.replace(/[,$]/g, ""));
     });
-  }, [positions, filterDex, sortBy]);
+  }, [positions, sortBy]);
 
   const totalPages = Math.ceil(sorted.length / perPage);
   const safePage = Math.min(posPage, Math.max(totalPages - 1, 0));
