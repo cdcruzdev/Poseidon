@@ -174,10 +174,10 @@ export default function DepositCard() {
     debounceRef.current = setTimeout(() => {
       if (lastEditRef.current === "a" && amountA && !manualTokenB) {
         const usdVal = parseFloat(amountA) * tokenPrices.tokenA;
-        setAmountB((usdVal / tokenPrices.tokenB).toFixed(6));
+        setAmountB((usdVal / tokenPrices.tokenB).toFixed(4));
       } else if (lastEditRef.current === "b" && amountB && manualTokenB) {
         const usdVal = parseFloat(amountB) * tokenPrices.tokenB;
-        setAmountA((usdVal / tokenPrices.tokenA).toFixed(6));
+        setAmountA((usdVal / tokenPrices.tokenA).toFixed(4));
       }
     }, 500);
 

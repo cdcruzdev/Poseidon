@@ -185,9 +185,16 @@ export default function TokenSelector({
         {/* Amount Input */}
         <div className="flex-1 relative">
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             value={amount}
-            onChange={(e) => onAmountChange(e.target.value)}
+            onChange={(e) => {
+              let v = e.target.value.replace(/[^0-9.]/g, '');
+              const parts = v.split('.');
+              if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+              if (parts.length === 2 && parts[1].length > 4) v = parts[0] + '.' + parts[1].slice(0, 4);
+              onAmountChange(v);
+            }}
             placeholder="0.00"
             disabled={disabled}
             className="w-full bg-transparent text-xl sm:text-2xl font-semibold text-right focus:outline-none placeholder-[#5a7090] disabled:opacity-50 disabled:cursor-not-allowed"

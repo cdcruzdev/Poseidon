@@ -110,26 +110,34 @@ export function useOrcaDeposit() {
           tickSpacing
         );
 
-        // Convert human amounts to native BN (using pool's token A)
-        const tokenAmountA = new BN(
+        // Convert human amounts to native BN
+        const poolTokenBAmount = isReversed ? tokenAAmount : tokenBAmount;
+
+        const tokenAmountABN = new BN(
           new Decimal(poolTokenAAmount)
             .mul(new Decimal(10).pow(poolTokenADecimals))
+            .floor()
+            .toString()
+        );
+        const tokenAmountBBN = new BN(
+          new Decimal(poolTokenBAmount)
+            .mul(new Decimal(10).pow(poolTokenBDecimals))
             .floor()
             .toString()
         );
 
         const slippage = Percentage.fromFraction(slippageBps, 10000);
 
-        // Build liquidity quote using pool's token A as input
         const tokenExtensionCtx =
           await TokenExtensionUtil.buildTokenExtensionContext(
             ctx.fetcher,
             poolData
           );
 
-        const quote = increaseLiquidityQuoteByInputTokenWithParams({
+        // Try token A as input first
+        const quoteFromA = increaseLiquidityQuoteByInputTokenWithParams({
           inputTokenMint: poolData.tokenMintA,
-          inputTokenAmount: tokenAmountA,
+          inputTokenAmount: tokenAmountABN,
           tokenMintA: poolData.tokenMintA,
           tokenMintB: poolData.tokenMintB,
           tickLowerIndex: tickLower,
@@ -139,6 +147,27 @@ export function useOrcaDeposit() {
           slippageTolerance: slippage,
           tokenExtensionCtx,
         });
+
+        // Check if token B from quote exceeds user's input — if so, use token B as input
+        const quoteBMax = quoteFromA.tokenMaxB;
+        let quote;
+        if (quoteBMax.gt(tokenAmountBBN)) {
+          // Token B would exceed — use B as constraining input instead
+          quote = increaseLiquidityQuoteByInputTokenWithParams({
+            inputTokenMint: poolData.tokenMintB,
+            inputTokenAmount: tokenAmountBBN,
+            tokenMintA: poolData.tokenMintA,
+            tokenMintB: poolData.tokenMintB,
+            tickLowerIndex: tickLower,
+            tickUpperIndex: tickUpper,
+            sqrtPrice: poolData.sqrtPrice,
+            tickCurrentIndex: poolData.tickCurrentIndex,
+            slippageTolerance: slippage,
+            tokenExtensionCtx,
+          });
+        } else {
+          quote = quoteFromA;
+        }
 
         if (!signAllTransactions) {
           throw new Error("Wallet does not support signAllTransactions");
