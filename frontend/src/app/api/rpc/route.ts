@@ -18,6 +18,7 @@ const ALLOWED_METHODS = new Set([
   "getSignatureStatuses",
   "confirmTransaction",
   "getMultipleAccounts",
+  "getMultipleAccountsInfo",
   "getProgramAccounts",
   "getTokenAccountBalance",
   "getFeeForMessage",

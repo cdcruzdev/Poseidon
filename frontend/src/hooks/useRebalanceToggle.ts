@@ -10,8 +10,8 @@ import {
   SystemProgram,
 } from "@solana/web3.js";
 
-const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=a9d759b5-f465-44ec-b753-92ab3007b641";
-const connection = new Connection(HELIUS_RPC, "confirmed");
+const RPC_URL = typeof window !== "undefined" ? "/api/rpc" : (process.env.HELIUS_RPC_URL || "https://mainnet.helius-rpc.com");
+const connection = new Connection(RPC_URL, "confirmed");
 const POSEIDON_PROGRAM = new PublicKey("HLsgAVzjjBaBR9QCLqV3vjC9LTnR2xtmtB77j1EJQBsZ");
 
 // Anchor discriminators: sha256("global:<method>")[0..8]
