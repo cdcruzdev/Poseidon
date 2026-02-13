@@ -13,7 +13,7 @@ import PrivacyToggle from "@/components/PrivacyToggle";
 import { useOrcaDeposit } from "@/hooks/useOrcaDeposit";
 import useMeteoraDeposit from "@/hooks/useMeteoraDeposit";
 import { useRaydiumDeposit } from "@/hooks/useRaydiumDeposit";
-import { useRebalanceProgram } from "@/hooks/useRebalanceProgram";
+// Rebalance now registered via API, not on-chain during deposit
 import StrategyPresets, { type Strategy } from "@/components/StrategyPresets";
 import AnimateHeight from "@/components/AnimateHeight";
 import { TOKENS, type Token } from "@/lib/tokens";
@@ -49,7 +49,7 @@ export default function DepositCard() {
   const orca = useOrcaDeposit();
   const meteora = useMeteoraDeposit();
   const raydium = useRaydiumDeposit();
-  const { enableRebalance } = useRebalanceProgram();
+  // enableRebalance removed — now API-based
 
   const [tokenA, setTokenA] = useState<Token | null>(TOKENS[0]);
   const [tokenB, setTokenB] = useState<Token | null>(TOKENS[1]);
@@ -71,7 +71,7 @@ export default function DepositCard() {
   const [tokenPrices, setTokenPrices] = useState<{ tokenA: number; tokenB: number }>({ tokenA: 0, tokenB: 0 });
   const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({});
   const [manualTokenB, setManualTokenB] = useState(false);
-  const [rebalanceWarning, setRebalanceWarning] = useState<string | null>(null);
+  // rebalanceWarning removed — rebalance now registered via API
   const [slippageBps, setSlippageBps] = useState(100); // 1% default
   const [showSlippage, setShowSlippage] = useState(false);
 
@@ -292,7 +292,6 @@ export default function DepositCard() {
     setTxState("confirming");
     setTxError(null);
     setTxSignature(null);
-    setRebalanceWarning(null);
 
     try {
       const depositParams = {
@@ -323,15 +322,24 @@ export default function DepositCard() {
 
       setTxSignature(result.signature);
 
-      // If auto-rebalance is enabled, register on-chain
+      // Register auto-rebalance preference via API (no extra wallet popup)
       if (autoRebalance && publicKey) {
         try {
-          const slippageBps = strategy === "aggressive" ? 200 : strategy === "conservative" ? 50 : 100;
           const yieldBps = Math.round(parseFloat(targetYield) * 100);
-          await enableRebalance(slippageBps, yieldBps);
-        } catch (rebalanceErr) {
-          console.warn("Rebalance registration failed (deposit still succeeded):", rebalanceErr);
-          setRebalanceWarning("Deposit successful, but auto-rebalance couldn't be enabled. You can enable it from your positions page.");
+          await fetch(`${API_BASE}/api/agent/rebalance`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              wallet: publicKey.toBase58(),
+              pool: selectedPool.address,
+              enabled: true,
+              maxSlippageBps: slippageBps,
+              minYieldBps: yieldBps,
+              signature: result.signature,
+            }),
+          });
+        } catch {
+          // Rebalance registration is best-effort
         }
       }
 
@@ -552,8 +560,8 @@ export default function DepositCard() {
                   </svg>
                   <span className="text-[#4ade80] font-medium">Deposit Successful!</span>
                 </div>
-                {rebalanceWarning && (
-                  <p className="text-xs text-[#f59e0b] text-center px-2">{rebalanceWarning}</p>
+                {autoRebalance && (
+                  <p className="text-xs text-[#7ec8e8] text-center">Auto-rebalance enabled</p>
                 )}
                 {txSignature && (
                   <a
