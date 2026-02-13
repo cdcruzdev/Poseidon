@@ -173,27 +173,28 @@ export default function DepositCard() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (tokenPrices.tokenA <= 0 || tokenPrices.tokenB <= 0) return;
 
-    // If either amount is empty/zero, don't auto-fill (user is clearing)
-    const aEmpty = !amountA || amountA === "0" || amountA === "0.";
-    const bEmpty = !amountB || amountB === "0" || amountB === "0.";
+    const edited = lastEditRef.current;
+    const aVal = parseFloat(amountA);
+    const bVal = parseFloat(amountB);
+    const aEmpty = !amountA || isNaN(aVal) || aVal === 0;
+    const bEmpty = !amountB || isNaN(bVal) || bVal === 0;
 
-    // Empty clears both
-    if (lastEditRef.current === "a" && aEmpty && amountB) { setAmountB(""); return; }
-    if (lastEditRef.current === "b" && bEmpty && amountA) { setAmountA(""); return; }
-    if (aEmpty || bEmpty) return;
+    // Empty clears both (instant, no debounce)
+    if (edited === "a" && aEmpty) { if (amountB) setAmountB(""); return; }
+    if (edited === "b" && bEmpty) { if (amountA) setAmountA(""); return; }
 
     debounceRef.current = setTimeout(() => {
-      if (lastEditRef.current === "a" && amountA && !manualTokenB) {
-        const usdVal = parseFloat(amountA) * tokenPrices.tokenA;
+      if (edited === "a" && !aEmpty) {
+        const usdVal = aVal * tokenPrices.tokenA;
         setAmountB((usdVal / tokenPrices.tokenB).toFixed(4));
-      } else if (lastEditRef.current === "b" && amountB && manualTokenB) {
-        const usdVal = parseFloat(amountB) * tokenPrices.tokenB;
+      } else if (edited === "b" && !bEmpty) {
+        const usdVal = bVal * tokenPrices.tokenB;
         setAmountA((usdVal / tokenPrices.tokenA).toFixed(4));
       }
     }, 500);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [amountA, amountB, tokenPrices.tokenA, tokenPrices.tokenB, manualTokenB]);
+  }, [amountA, amountB, tokenPrices.tokenA, tokenPrices.tokenB]);
 
   const lastPairRef = useRef("");
 
