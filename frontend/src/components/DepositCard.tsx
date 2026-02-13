@@ -91,7 +91,7 @@ export default function DepositCard() {
     fetchAllBalances();
   }, [publicKey, connection]);
 
-  const SOL_RENT_RESERVE = 0.05;
+  const SOL_RENT_RESERVE = 0.003;
   // Apply rent reserve to SOL in the shared balances object so dropdown + label match
   const adjustedBalances = { ...tokenBalances };
   if (adjustedBalances["SOL"] !== undefined) {

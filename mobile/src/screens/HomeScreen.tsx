@@ -330,7 +330,7 @@ export function HomeScreen({ navigation }: any) {
 
         // Apply SOL rent reserve
         if (balances['SOL'] !== undefined) {
-          balances['SOL'] = Math.max(0, balances['SOL'] - 0.05);
+          balances['SOL'] = Math.max(0, balances['SOL'] - 0.003);
         }
 
         // SPL token balances
