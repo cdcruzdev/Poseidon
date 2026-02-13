@@ -227,11 +227,19 @@ export function useOrcaDeposit() {
           const txSig = await connection.sendRawTransaction(rawTx, {
             skipPreflight: false,
           });
-          // Confirm every transaction before sending the next one
-          await connection.confirmTransaction(
-            { signature: txSig, blockhash, lastValidBlockHeight },
-            "confirmed"
-          );
+          // Poll signature status with retry (more resilient than confirmTransaction)
+          let confirmed = false;
+          for (let attempt = 0; attempt < 60; attempt++) {
+            await new Promise(r => setTimeout(r, 1500));
+            const resp = await connection.getSignatureStatus(txSig);
+            const status = resp?.value;
+            if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
+              if (status.err) throw new Error(`Transaction failed: ${JSON.stringify(status.err)}`);
+              confirmed = true;
+              break;
+            }
+          }
+          if (!confirmed) throw new Error("Transaction confirmation timed out. Check Solscan for status.");
           signature = txSig;
         }
 
