@@ -72,6 +72,8 @@ export default function DepositCard() {
   const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({});
   const [manualTokenB, setManualTokenB] = useState(false);
   const [rebalanceWarning, setRebalanceWarning] = useState<string | null>(null);
+  const [slippageBps, setSlippageBps] = useState(100); // 1% default
+  const [showSlippage, setShowSlippage] = useState(false);
 
   // Fetch all token balances at once
   useEffect(() => {
@@ -291,7 +293,7 @@ export default function DepositCard() {
         tokenBDecimals: tokenB.decimals,
         tokenAMint: tokenA.mint,
         tokenBMint: tokenB.mint,
-        slippageBps: 100, // 1% slippage (Orca recommended)
+        slippageBps,
       };
 
       let result;
@@ -352,25 +354,45 @@ export default function DepositCard() {
         {/* Card Header */}
         <div className="p-4 border-b border-[#1a3050] flex items-center justify-between">
           <h2 className="font-semibold text-lg tracking-wider text-[#e0e8f0]" style={{ fontFamily: 'var(--font-bebas)' }}>DEPOSIT LIQUIDITY</h2>
-          <button
-            onClick={fetchPools}
-            disabled={loadingPools}
-            className="p-2 rounded-lg hover:bg-[#1a3050]/50 transition-colors text-[#5a7090] hover:text-[#ffffff] disabled:opacity-50"
-            title="Refresh pools" aria-label="Refresh pools"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className={loadingPools ? "animate-spin" : ""}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowSlippage(!showSlippage)}
+              className="p-2 rounded-lg hover:bg-[#1a3050]/50 transition-colors text-[#5a7090] hover:text-[#ffffff]"
+              title="Slippage settings" aria-label="Slippage settings"
             >
-              <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
-            </svg>
-          </button>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => { lastPairRef.current = ""; setTokenBalances({}); fetchPools(); }}
+              disabled={loadingPools}
+              className="p-2 rounded-lg hover:bg-[#1a3050]/50 transition-colors text-[#5a7090] hover:text-[#ffffff] disabled:opacity-50"
+              title="Refresh pools & balances" aria-label="Refresh pools & balances"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={loadingPools ? "animate-spin" : ""}>
+                <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Slippage Settings */}
+        {showSlippage && (
+          <div className="px-4 py-3 border-b border-[#1a3050] flex items-center gap-2">
+            <span className="text-xs text-[#5a7090]">Slippage:</span>
+            {[50, 100, 200].map(bps => (
+              <button key={bps} onClick={() => setSlippageBps(bps)}
+                className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
+                  slippageBps === bps
+                    ? "bg-[#7ec8e8]/15 text-[#7ec8e8] border border-[#7ec8e8]/30"
+                    : "bg-[#1a3050] text-[#5a7090] border border-transparent hover:text-[#8899aa]"
+                }`}
+              >{bps / 100}%</button>
+            ))}
+          </div>
+        )}
 
         {/* Card Body */}
         <div className="p-4 space-y-3">

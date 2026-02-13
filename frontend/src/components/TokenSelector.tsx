@@ -213,12 +213,12 @@ export default function TokenSelector({
         )}
       </div>
 
-      {/* USD Value */}
-      {amount && parseFloat(amount) > 0 && (
-        <div className="mt-2 text-right text-sm text-[#5a7090]">
-          ~ ${(parseFloat(amount) * usdPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </div>
-      )}
+      {/* USD Value - always rendered, animated visibility */}
+      <div className={`overflow-hidden transition-all duration-200 ease-out text-right text-sm text-[#5a7090] ${
+        amount && parseFloat(amount) > 0 && usdPrice > 0 ? "max-h-8 opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"
+      }`}>
+        ~ ${(parseFloat(amount || "0") * usdPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
     </div>
   );
 }
