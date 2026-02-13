@@ -42,7 +42,7 @@ async function fetchOrcaPools(mintA: string, mintB: string): Promise<any[]> {
       tokenBMint: p.tokenB?.mint,
       tokenAPrice: p.tokenA?.usdPrice || 0,
       tokenBPrice: p.tokenB?.usdPrice || 0,
-      feeTier: (p.tickSpacing === 1 ? 0.01 : p.tickSpacing === 8 ? 0.04 : p.tickSpacing === 64 ? 0.3 : p.tickSpacing === 128 ? 1 : 0.3),
+      feeTier: p.lpFeeRate ? p.lpFeeRate * 100 : (p.tickSpacing === 1 ? 0.01 : p.tickSpacing === 4 ? 0.04 : p.tickSpacing === 8 ? 0.05 : p.tickSpacing === 64 ? 0.3 : p.tickSpacing === 128 ? 1 : 0.3),
       tvl: p.tvl || 0,
       volume24h: p.volume?.day || 0,
       apr24h: p.reward_apr?.day ? p.reward_apr.day * 100 : undefined,
@@ -59,7 +59,7 @@ async function fetchOrcaPools(mintA: string, mintB: string): Promise<any[]> {
 async function fetchRaydiumPools(mintA: string, mintB: string): Promise<any[]> {
   try {
     const res = await fetch(
-      `https://api-v3.raydium.io/pools/info/mint?mint1=${mintA}&mint2=${mintB}&poolType=concentrated&poolSortField=tvl&sortType=desc&pageSize=20&page=1`,
+      `https://api-v3.raydium.io/pools/info/mint?mint1=${mintA}&mint2=${mintB}&poolType=concentrated&poolSortField=default&sortType=desc&pageSize=20&page=1`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!res.ok) return [];
