@@ -97,32 +97,65 @@ export function useRaydiumDeposit() {
         });
 
         // 4. Convert human-readable amounts to BN
-        const baseAmount = new BN(
+        const poolBAmount = isReversed ? tokenAAmount : tokenBAmount;
+        const poolBDecimals = isReversed ? tokenADecimals : tokenBDecimals;
+
+        const amountABN = new BN(
           new Decimal(poolAAmount)
             .mul(new Decimal(10).pow(poolADecimals))
+            .toFixed(0)
+        );
+        const amountBBN = new BN(
+          new Decimal(poolBAmount)
+            .mul(new Decimal(10).pow(poolBDecimals))
             .toFixed(0)
         );
 
         const slippage = slippageBps / 10000;
 
-        // 5. Calculate liquidity from base amount
+        // 5. Calculate liquidity — try A as input, check if B fits
         const epochInfo = await connection.getEpochInfo();
 
-        const { liquidity, amountSlippageA, amountSlippageB } =
+        const quoteFromA =
           await PoolUtils.getLiquidityAmountOutFromAmountIn({
             poolInfo,
             inputA: true,
             tickLower,
             tickUpper,
-            amount: baseAmount,
+            amount: amountABN,
             slippage,
             add: true,
             epochInfo,
             amountHasFee: false,
           });
 
-        // Calculate otherAmountMax (token B max with slippage)
-        const otherAmountMax = amountSlippageB.amount;
+        // If token B from quote exceeds user input, flip to use B as input
+        let useBase: "MintA" | "MintB";
+        let baseAmount: BN;
+        let otherAmountMax: BN;
+
+        if (quoteFromA.amountSlippageB.amount.gt(amountBBN)) {
+          // B would exceed — use B as constraining input
+          const quoteFromB =
+            await PoolUtils.getLiquidityAmountOutFromAmountIn({
+              poolInfo,
+              inputA: false,
+              tickLower,
+              tickUpper,
+              amount: amountBBN,
+              slippage,
+              add: true,
+              epochInfo,
+              amountHasFee: false,
+            });
+          useBase = "MintB";
+          baseAmount = amountBBN;
+          otherAmountMax = quoteFromB.amountSlippageA.amount;
+        } else {
+          useBase = "MintA";
+          baseAmount = amountABN;
+          otherAmountMax = quoteFromA.amountSlippageB.amount;
+        }
 
         // 6. Open position
         const { execute, extInfo } = await raydium.clmm.openPositionFromBase({
@@ -130,7 +163,7 @@ export function useRaydiumDeposit() {
           poolKeys,
           tickLower,
           tickUpper,
-          base: "MintA",
+          base: useBase,
           baseAmount,
           otherAmountMax,
           ownerInfo: {

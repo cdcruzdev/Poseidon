@@ -71,14 +71,19 @@ export default function useMeteoraDeposit() {
         const yDecimals = isReversed ? tokenADecimals : tokenBDecimals;
 
         // Convert human-readable amounts to native units
+        // Reduce amounts by 2% buffer to account for Meteora bin rent (~0.05 SOL)
+        // and ATA creation costs. This ensures wallet never shows more than UI.
+        const METEORA_BUFFER = 0.98;
         const totalXAmount = new BN(
           new Decimal(xAmount)
+            .mul(METEORA_BUFFER)
             .mul(new Decimal(10).pow(xDecimals))
             .floor()
             .toFixed(0)
         );
         const totalYAmount = new BN(
           new Decimal(yAmount)
+            .mul(METEORA_BUFFER)
             .mul(new Decimal(10).pow(yDecimals))
             .floor()
             .toFixed(0)

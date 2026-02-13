@@ -70,7 +70,7 @@ export default function TokenSelector({
   const handleMaxClick = () => {
     const max = maxBalance !== undefined ? maxBalance : balance;
     if (max !== undefined) {
-      onAmountChange(max.toString());
+      onAmountChange(parseFloat(max.toFixed(4)).toString());
     }
   };
 

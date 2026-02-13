@@ -15,10 +15,7 @@ interface AutoRebalanceProps {
 const YIELD_OPTIONS = [
   { value: "0.05", label: "0.05%" },
   { value: "0.10", label: "0.10%" },
-  { value: "0.20", label: "0.20%" },
-  { value: "0.25", label: "0.25%" },
   { value: "0.50", label: "0.50%" },
-  { value: "1.00", label: "1.00%" },
 ];
 
 export default function AutoRebalance({
@@ -90,15 +87,14 @@ export default function AutoRebalance({
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </button>
-            {showYieldDropdown && (
+            {showYieldDropdown && createPortal(
               <>
-                {createPortal(
-                  <div className="fixed inset-0 z-[9998]" onClick={() => setShowYieldDropdown(false)} />,
-                  document.body
-                )}
+                <div className="fixed inset-0 z-[9998]" onClick={() => setShowYieldDropdown(false)} />
                 <div
-                  className="absolute left-0 top-full mt-1 z-[9999] bg-[#0d1d30] border border-[#1a3050] rounded-xl shadow-xl shadow-black/40 min-w-[100px]"
+                  className="fixed z-[9999] bg-[#0d1d30] border border-[#1a3050] rounded-xl shadow-xl shadow-black/40 min-w-[100px]"
                   style={{
+                    top: dropdownPos.top,
+                    left: dropdownPos.left,
                     transformOrigin: "top left",
                     animation: "dropdown-in 180ms ease-out forwards",
                   }}
@@ -120,7 +116,8 @@ export default function AutoRebalance({
                     </button>
                   ))}
                 </div>
-              </>
+              </>,
+              document.body
             )}
           </div>
         </div>
