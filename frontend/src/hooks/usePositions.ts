@@ -1,26 +1,31 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey } from "@solana/web3.js";
+import { useWallet } from "@solana/wallet-adapter-react";
 import type { Position } from "@/types/position";
 
-// Program IDs
-const ORCA_WHIRLPOOL_PROGRAM = new PublicKey("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc");
-const RAYDIUM_CLMM_PROGRAM = new PublicKey("CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK");
-const METEORA_DLMM_PROGRAM = new PublicKey("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo");
+const HELIUS_KEY = "a9d759b5-f465-44ec-b753-92ab3007b641";
+const HELIUS_API = `https://api.helius.xyz/v0`;
 
-// Helius RPC for DAS API
-const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=a9d759b5-f465-44ec-b753-92ab3007b641";
+// Known DEX program IDs
+const DEX_PROGRAMS: Record<string, string> = {
+  "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc": "Orca",
+  "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK": "Raydium",
+  "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo": "Meteora",
+};
 
-interface RawPosition {
-  address: string;
-  dex: string;
-  data?: any;
+interface HeliusTx {
+  signature: string;
+  type: string;
+  source: string;
+  timestamp: number;
+  description?: string;
+  instructions?: Array<{ programId: string; accounts?: string[] }>;
+  nativeTransfers?: Array<{ fromUserAccount: string; toUserAccount: string; amount: number }>;
+  tokenTransfers?: Array<{ fromUserAccount: string; toUserAccount: string; mint: string; tokenAmount: number; tokenStandard?: string }>;
 }
 
 export function usePositions() {
-  const { connection } = useConnection();
   const { publicKey, connected } = useWallet();
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,71 +35,50 @@ export function usePositions() {
     setLoading(true);
 
     try {
-      const rawPositions: RawPosition[] = [];
+      const wallet = publicKey.toBase58();
+      
+      // Fetch recent transactions from Helius enhanced API
+      const res = await fetch(
+        `${HELIUS_API}/addresses/${wallet}/transactions?api-key=${HELIUS_KEY}&limit=50`
+      );
+      const txs: HeliusTx[] = await res.json();
 
-      // Fetch positions from all 3 DEXes in parallel
-      const [orcaPositions, raydiumPositions, meteoraPositions] = await Promise.allSettled([
-        // Orca: get positions by owner via getProgramAccounts
-        connection.getProgramAccounts(ORCA_WHIRLPOOL_PROGRAM, {
-          filters: [
-            { dataSize: 216 }, // Orca position account size
-            { memcmp: { offset: 8, bytes: publicKey.toBase58() } }, // owner at offset 8
-          ],
-        }).then(accounts => 
-          accounts.map(a => ({ address: a.pubkey.toBase58(), dex: "Orca" }))
-        ),
+      const found: Position[] = [];
+      const seenSigs = new Set<string>();
 
-        // Raydium CLMM: personal position accounts
-        connection.getProgramAccounts(RAYDIUM_CLMM_PROGRAM, {
-          filters: [
-            { dataSize: 261 }, // Raydium personal position size
-            { memcmp: { offset: 8, bytes: publicKey.toBase58() } },
-          ],
-        }).then(accounts =>
-          accounts.map(a => ({ address: a.pubkey.toBase58(), dex: "Raydium" }))
-        ),
+      for (const tx of txs) {
+        if (seenSigs.has(tx.signature)) continue;
 
-        // Meteora DLMM: position accounts  
-        connection.getProgramAccounts(METEORA_DLMM_PROGRAM, {
-          filters: [
-            { dataSize: 8120 }, // Meteora position size
-            { memcmp: { offset: 8, bytes: publicKey.toBase58() } },
-          ],
-        }).then(accounts =>
-          accounts.map(a => ({ address: a.pubkey.toBase58(), dex: "Meteora" }))
-        ),
-      ]);
+        // Method 1: Helius detected OPEN_POSITION type
+        if (tx.type === "OPEN_POSITION") {
+          seenSigs.add(tx.signature);
+          found.push(txToPosition(tx, tx.source || "Unknown"));
+          continue;
+        }
 
-      // Collect all found positions
-      if (orcaPositions.status === "fulfilled") rawPositions.push(...orcaPositions.value);
-      if (raydiumPositions.status === "fulfilled") rawPositions.push(...raydiumPositions.value);
-      if (meteoraPositions.status === "fulfilled") rawPositions.push(...meteoraPositions.value);
+        // Method 2: Check if any instruction interacts with known DEX programs
+        // Skip explicit close/withdraw transactions
+        if (tx.type === "CLOSE_POSITION" || tx.type === "WITHDRAW") continue;
+        
+        if (tx.instructions) {
+          for (const ix of tx.instructions) {
+            const dex = DEX_PROGRAMS[ix.programId];
+            if (dex) {
+              seenSigs.add(tx.signature);
+              found.push(txToPosition(tx, dex));
+              break;
+            }
+          }
+        }
+      }
 
-      // Map to Position type
-      const mapped: Position[] = rawPositions.map((p, i) => ({
-        id: p.address,
-        pair: "LP Position",
-        dex: p.dex,
-        deposited: "-",
-        current: "-",
-        pnl: "-",
-        pnlPct: "-",
-        apy: "-",
-        range: "Active",
-        status: "in-range" as const,
-        rebalances: 0,
-        age: "New",
-        feesEarned: "-",
-        nextRebalance: "Monitoring",
-      }));
-
-      setPositions(mapped);
+      setPositions(found);
     } catch (err) {
       console.warn("Failed to fetch positions:", err);
     } finally {
       setLoading(false);
     }
-  }, [publicKey, connected, connection]);
+  }, [publicKey, connected]);
 
   useEffect(() => {
     if (connected && publicKey) {
@@ -105,4 +89,55 @@ export function usePositions() {
   }, [connected, publicKey, fetchPositions]);
 
   return { positions, loading, refetch: fetchPositions };
+}
+
+function txToPosition(tx: HeliusTx, dex: string): Position {
+  // Extract token info from transfers
+  const tokens = tx.tokenTransfers?.filter(t => t.tokenAmount > 0) || [];
+  const tokenSymbols = tokens.length >= 2
+    ? `${formatMint(tokens[0].mint)}/${formatMint(tokens[1].mint)}`
+    : "LP Position";
+
+  const solTransferred = tx.nativeTransfers
+    ?.filter(t => t.fromUserAccount === tx.nativeTransfers?.[0]?.fromUserAccount)
+    .reduce((sum, t) => sum + t.amount, 0) || 0;
+
+  return {
+    id: tx.signature.slice(0, 12),
+    pair: tokenSymbols,
+    dex,
+    deposited: solTransferred > 0 ? `${(solTransferred / 1e9).toFixed(4)} SOL` : "-",
+    current: "-",
+    pnl: "-",
+    pnlPct: "-",
+    apy: "-",
+    range: "Active",
+    status: "in-range",
+    rebalances: 0,
+    age: getAge(tx.timestamp * 1000),
+    feesEarned: "-",
+    nextRebalance: "Monitoring",
+  };
+}
+
+function formatMint(mint: string): string {
+  const KNOWN: Record<string, string> = {
+    "So11111111111111111111111111111111111111112": "SOL",
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USDC",
+    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "USDT",
+    "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN": "JUP",
+    "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263": "BONK",
+    "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm": "WIF",
+  };
+  return KNOWN[mint] || mint.slice(0, 4) + "..";
+}
+
+function getAge(timestamp: number): string {
+  const ms = Date.now() - timestamp;
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
