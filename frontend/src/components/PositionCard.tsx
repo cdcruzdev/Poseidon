@@ -88,20 +88,14 @@ export default function PositionCard({
             </svg>
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div>
-            <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">Deposited</p>
-            <p className="text-sm font-mono text-[#b8c8d8]">{pos.deposited}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">Current</p>
+            <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">Current Value</p>
             <p className="text-sm font-mono text-[#e0e8f0]">{pos.current}</p>
           </div>
           <div>
-            <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">P&L</p>
-            <p className="text-sm font-mono" style={{ color: pos.pnl.startsWith("+") ? "#4ade80" : "#f87171" }}>
-              {pos.pnl} ({pos.pnlPct})
-            </p>
+            <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">Fees Earned</p>
+            <p className="text-sm font-mono text-[#4ade80]">{pos.feesEarned}</p>
           </div>
           {/* TODO: Re-enable when yield estimates are verified accurate
           <div>
@@ -118,10 +112,6 @@ export default function PositionCard({
             <div>
               <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">Range</p>
               <p className="text-sm font-mono text-[#b8c8d8]">{pos.range}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">Fees Earned</p>
-              <p className="text-sm font-mono text-[#4ade80]">{pos.feesEarned}</p>
             </div>
             {/* TODO: Re-enable rebalance stats + toggle when per-position program is funded
             <div>

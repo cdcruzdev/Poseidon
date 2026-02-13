@@ -21,16 +21,11 @@ interface PositionListProps {
 export default function PositionList({ positions, loading, emptyMessage = "No positions yet.", perPage = 3, onClosePosition, closingId, onRefresh, refreshing, lastRefresh, onRebalanceToggle, rebalanceTogglingMint }: PositionListProps) {
   const [expandedPosition, setExpandedPosition] = useState<string | null>(null);
   const [posPage, setPosPage] = useState(0);
-  const [sortBy, setSortBy] = useState<"pnl" | "apy" | "value">("value");
-
   const sorted = useMemo(() => {
-    const filtered = positions;
-    return [...filtered].sort((a, b) => {
-      if (sortBy === "apy") return parseFloat(b.apy) - parseFloat(a.apy);
-      if (sortBy === "pnl") return parseFloat(b.pnl.replace(/[,$+]/g, "")) - parseFloat(a.pnl.replace(/[,$+]/g, ""));
+    return [...positions].sort((a, b) => {
       return parseFloat(b.current.replace(/[,$]/g, "")) - parseFloat(a.current.replace(/[,$]/g, ""));
     });
-  }, [positions, sortBy]);
+  }, [positions]);
 
   const totalPages = Math.ceil(sorted.length / perPage);
   const safePage = Math.min(posPage, Math.max(totalPages - 1, 0));
@@ -60,19 +55,9 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
           MY POSITIONS ({sorted.length})
         </h2>
         <div className="flex items-center gap-2">
-          {(["value", "pnl"] as const).map(opt => (
-            <button
-              key={opt}
-              onClick={() => setSortBy(opt)}
-              className={`px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                sortBy === opt
-                  ? "bg-[#7ec8e8]/15 text-[#7ec8e8] border border-[#7ec8e8]/30"
-                  : "bg-[#1a3050]/50 text-[#5a7090] border border-transparent hover:text-[#8899aa]"
-              }`}
-            >
-              {opt === "value" ? "Value" : "P&L"}
-            </button>
-          ))}
+          <span className="px-3 py-1.5 rounded-lg text-xs bg-[#7ec8e8]/15 text-[#7ec8e8] border border-[#7ec8e8]/30">
+            By Value
+          </span>
           {onRefresh && (
             <button
               onClick={onRefresh}
