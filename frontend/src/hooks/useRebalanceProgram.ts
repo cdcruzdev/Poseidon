@@ -9,7 +9,7 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 
-const PROGRAM_ID = new PublicKey("2ro3VBKvqtc86DJVMnZETHMGAtjYFipZwdMFgtZGWscx");
+const PROGRAM_ID = new PublicKey("HLsgAVzjjBaBR9QCLqV3vjC9LTnR2xtmtB77j1EJQBsZ");
 
 // Precomputed: first 8 bytes of sha256("global:<name>")
 const IX_ENABLE = Buffer.from([94, 247, 51, 161, 142, 177, 235, 11]);

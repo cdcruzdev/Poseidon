@@ -7,6 +7,9 @@ skip-lint = false
 [programs.devnet]
 poseidon_rebalance = "2ro3VBKvqtc86DJVMnZETHMGAtjYFipZwdMFgtZGWscx"
 
+[programs.mainnet]
+poseidon_native = "HLsgAVzjjBaBR9QCLqV3vjC9LTnR2xtmtB77j1EJQBsZ"
+
 [registry]
 url = "https://api.apr.dev"
 

@@ -1,9 +1,9 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import Toggle from "@/components/Toggle";
 import AnimateHeight from "@/components/AnimateHeight";
-import { useRebalanceProgram } from "@/hooks/useRebalanceProgram";
 
 interface AutoRebalanceProps {
   enabled: boolean;
@@ -15,10 +15,8 @@ interface AutoRebalanceProps {
 const YIELD_OPTIONS = [
   { value: "0.05", label: "0.05%" },
   { value: "0.10", label: "0.10%" },
-  { value: "0.15", label: "0.15%" },
   { value: "0.20", label: "0.20%" },
   { value: "0.25", label: "0.25%" },
-  { value: "0.30", label: "0.30%" },
   { value: "0.50", label: "0.50%" },
   { value: "1.00", label: "1.00%" },
 ];
@@ -30,59 +28,15 @@ export default function AutoRebalance({
   onTargetYieldChange,
 }: AutoRebalanceProps) {
   const [showInfo, setShowInfo] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-
-  const {
-    fetchConfig,
-    enableRebalance,
-    disableRebalance,
-    walletConnected,
-  } = useRebalanceProgram();
-
-  // Fetch on-chain state on mount
-  useEffect(() => {
-    if (!walletConnected) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const cfg = await fetchConfig();
-        if (!cancelled && cfg) {
-          onEnabledChange(cfg.enabled);
-        }
-      } catch {
-        // ignore fetch errors on mount
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walletConnected]);
+  const [showYieldDropdown, setShowYieldDropdown] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const handleToggle = useCallback(
-    async (newEnabled: boolean) => {
-      if (!walletConnected) {
-        setStatus({ type: "error", msg: "Connect wallet first" });
-        return;
-      }
-      setLoading(true);
-      setStatus(null);
-      try {
-        if (newEnabled) {
-          const sig = await enableRebalance(100, 50); // 1% slippage, 0.5% min yield
-          setStatus({ type: "success", msg: `Enabled! Tx: ${sig.slice(0, 8)}...` });
-        } else {
-          const sig = await disableRebalance();
-          setStatus({ type: "success", msg: `Disabled! Tx: ${sig.slice(0, 8)}...` });
-        }
-        onEnabledChange(newEnabled);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Transaction failed";
-        setStatus({ type: "error", msg });
-      } finally {
-        setLoading(false);
-      }
+    (newEnabled: boolean) => {
+      onEnabledChange(newEnabled);
     },
-    [walletConnected, enableRebalance, disableRebalance, onEnabledChange]
+    [onEnabledChange]
   );
 
   return (
@@ -94,32 +48,11 @@ export default function AutoRebalance({
             onClick={() => setShowInfo(!showInfo)}
             className="text-[#5a7090] hover:text-[#ffffff] transition-colors"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4M12 8h.01" />
-            </svg>
+            <span className="w-4 h-4 rounded-full border border-current flex items-center justify-center text-[9px] font-bold leading-none">i</span>
           </button>
-          {loading && (
-            <svg className="animate-spin h-4 w-4 text-[#7ec8e8]" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-          )}
         </div>
         <Toggle enabled={enabled} onChange={handleToggle} />
       </div>
-
-      {status && (
-        <div
-          className={`mt-2 text-xs px-2 py-1 rounded ${
-            status.type === "success"
-              ? "text-[#4ade80] bg-[#4ade80]/10"
-              : "text-[#f87171] bg-[#f87171]/10"
-          }`}
-        >
-          {status.msg}
-        </div>
-      )}
 
       <AnimateHeight open={showInfo}>
         <div className="mt-2 p-3 bg-[#0a1520]/60 rounded-lg text-xs text-[#8899aa]">
@@ -129,20 +62,67 @@ export default function AutoRebalance({
         </div>
       </AnimateHeight>
 
-      <AnimateHeight open={enabled}>
-        <div className="mt-2 flex items-center gap-2">
+      <AnimateHeight open={enabled} duration={300}>
+        <div className="mt-2 flex items-center gap-2 relative">
           <span className="text-xs text-[#5a7090]">Target 24h Yield:</span>
-          <select
-            value={targetYield}
-            onChange={(e) => onTargetYieldChange(e.target.value)}
-            className="px-2 py-1 bg-[#0a1520]/60 border border-[#1a3050] rounded-md text-xs focus:border-[#2a4060] focus:outline-none cursor-pointer"
-          >
-            {YIELD_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <button
+              ref={triggerRef}
+              onClick={() => {
+                if (triggerRef.current) {
+                  const rect = triggerRef.current.getBoundingClientRect();
+                  setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+                }
+                setShowYieldDropdown(!showYieldDropdown);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0a1520]/60 border border-[#1a3050] rounded-lg text-xs text-[#e0e8f0] hover:border-[#7ec8e8]/50 transition-colors cursor-pointer"
+            >
+              <span className="text-[#7ec8e8] font-medium">{YIELD_OPTIONS.find(o => o.value === targetYield)?.label || targetYield}</span>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#5a7090"
+                strokeWidth="2"
+                className={`transition-transform ${showYieldDropdown ? "rotate-180" : ""}`}
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            {showYieldDropdown && (
+              <>
+                {createPortal(
+                  <div className="fixed inset-0 z-[9998]" onClick={() => setShowYieldDropdown(false)} />,
+                  document.body
+                )}
+                <div
+                  className="absolute left-0 top-full mt-1 z-[9999] bg-[#0d1d30] border border-[#1a3050] rounded-xl shadow-xl shadow-black/40 min-w-[100px]"
+                  style={{
+                    transformOrigin: "top left",
+                    animation: "dropdown-in 180ms ease-out forwards",
+                  }}
+                >
+                  {YIELD_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        onTargetYieldChange(option.value);
+                        setShowYieldDropdown(false);
+                      }}
+                      className={`w-full px-3 py-2 text-xs text-left transition-colors ${
+                        option.value === targetYield
+                          ? "bg-[#7ec8e8]/15 text-[#7ec8e8] font-medium"
+                          : "text-[#8899aa] hover:bg-[#1a3050] hover:text-[#e0e8f0]"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </AnimateHeight>
     </div>

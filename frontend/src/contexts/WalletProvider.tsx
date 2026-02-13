@@ -21,7 +21,17 @@ interface WalletProviderProps {
 export default function WalletProvider({ children }: WalletProviderProps) {
   // Use mainnet-beta or custom RPC
   const endpoint = useMemo(() => {
-    return process.env.NEXT_PUBLIC_RPC_URL || clusterApiUrl("mainnet-beta");
+    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
+    if (!rpcUrl) return clusterApiUrl("mainnet-beta");
+    // Relative paths need absolute URL for @solana/web3.js Connection.
+    // During SSR/prerender (no window), fall back to public RPC since the proxy isn't reachable.
+    if (rpcUrl.startsWith("/")) {
+      if (typeof window !== "undefined") {
+        return window.location.origin + rpcUrl;
+      }
+      return clusterApiUrl("mainnet-beta");
+    }
+    return rpcUrl;
   }, []);
 
   // Initialize wallets - Phantom, Solflare, and Mobile Wallet Adapter

@@ -15,9 +15,28 @@ import { PoolInfo } from '../types/index.js';
 import { AgentActivityTracker } from '../core/activity-tracker.js';
 import { ReasoningLogger } from '../core/reasoning-logger.js';
 import { PositionMonitor } from '../core/position-monitor.js';
+import { AIReasoner } from '../core/ai-reasoner.js';
 
 const PORT = process.env.API_PORT || 3001;
 const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
+
+// --- Pool cache (60s TTL) ---
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+}
+const poolCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60_000; // 60 seconds
+
+function getCached(key: string): any | null {
+  const entry = poolCache.get(key);
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) return entry.data;
+  return null;
+}
+
+function setCache(key: string, data: any): void {
+  poolCache.set(key, { data, timestamp: Date.now() });
+}
 
 // Well-known token addresses
 const TOKENS: Record<string, string> = {
@@ -265,6 +284,15 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
         return;
       }
 
+      // Check cache
+      const poolsCacheKey = `pools:${tokenA}:${tokenB}:${dexFilter || 'all'}:${limit}`;
+      const poolsCached = getCached(poolsCacheKey);
+      if (poolsCached) {
+        console.log(`[API] Cache hit for ${poolsCacheKey}`);
+        jsonResponse(res, poolsCached);
+        return;
+      }
+
       const reg = await initializeRegistry();
       const adapters = reg.getAll();
       
@@ -304,7 +332,9 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
         tokenBPrice: prices.get(tokenB.toUpperCase()) || 0,
       }));
 
-      jsonResponse(res, { success: true, data: enrichedPools });
+      const poolsResponseBody = { success: true, data: enrichedPools };
+      setCache(poolsCacheKey, poolsResponseBody);
+      jsonResponse(res, poolsResponseBody);
       return;
     }
 
@@ -351,6 +381,15 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 
       if (!tokenA || !tokenB) {
         jsonResponse(res, { success: false, error: 'Missing tokenA or tokenB parameter' }, 400);
+        return;
+      }
+
+      // Check cache first
+      const cacheKey = `compare:${tokenA}:${tokenB}`;
+      const cached = getCached(cacheKey);
+      if (cached) {
+        console.log(`[API] Cache hit for ${cacheKey}`);
+        jsonResponse(res, cached);
         return;
       }
 
@@ -401,17 +440,26 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       console.log(`[API] Total pools from all DEXes: ${allPools.length}`);
 
       try {
-        // Sort by estimated APR (handle TVL=0 to avoid Infinity)
-        allPools.sort((a, b) => {
-          const aprA = a.tvl > 0 ? a.feeRate * (a.volume24h / a.tvl) * 365 * 100 : 0;
-          const aprB = b.tvl > 0 ? b.feeRate * (b.volume24h / b.tvl) * 365 * 100 : 0;
-          return aprB - aprA;
-        });
+        // Balanced scoring: yield is king, but filter out unsafe pools
+        // Score = yield_score * 0.7 + tvl_safety * 0.2 + volume_score * 0.1
+        function poolScore(p: SimplePool): number {
+          const apr = p.tvl > 0 ? p.feeRate * (p.volume24h / p.tvl) * 365 * 100 : 0;
+          // Normalize APR: cap at 200% for scoring
+          const yieldScore = Math.min(apr, 200) / 200;
+          // TVL safety: $500K+ is safe, below gets penalized
+          const tvlSafety = p.tvl >= 500_000 ? 1 : p.tvl >= 100_000 ? 0.5 : 0.1;
+          // Volume: healthy volume means real activity
+          const volRatio = p.tvl > 0 ? p.volume24h / p.tvl : 0;
+          const volumeScore = Math.min(volRatio / 2, 1);
+          return yieldScore * 0.7 + tvlSafety * 0.2 + volumeScore * 0.1;
+        }
+
+        allPools.sort((a, b) => poolScore(b) - poolScore(a));
 
         const prices = await priceOracle.getPrices([tokenA, tokenB]);
         const bestPool = allPools[0];
 
-        jsonResponse(res, {
+        const responseBody = {
           success: true,
           data: {
             tokenA,
@@ -430,7 +478,9 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
               reason: 'Highest estimated APR based on fees and volume',
             } : null,
           },
-        });
+        };
+        setCache(cacheKey, responseBody);
+        jsonResponse(res, responseBody);
       } catch (error: any) {
         console.error('[API] Error in compare response:', error.message, error.stack);
         jsonResponse(res, { success: false, error: 'Failed to process pools' }, 500);
@@ -662,10 +712,10 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
           uptime: uptimeMs,
           uptimeFormatted: `${Math.floor(uptimeMs / 3600000)}h ${Math.floor((uptimeMs % 3600000) / 60000)}m`,
           positionsMonitored: positions.length,
-          rebalancesExecuted: feeStats?.totalPerformanceFeesCollected || 0,
+          rebalancesExecuted: feeStats?.totalPerformanceFees?.toNumber() || 0,
           feesCollected: {
-            deposit: feeStats?.totalDepositFeesCollected || 0,
-            performance: feeStats?.totalPerformanceFeesCollected || 0,
+            deposit: feeStats?.totalDepositFees?.toNumber() || 0,
+            performance: feeStats?.totalPerformanceFees?.toNumber() || 0,
           },
           totalValueManaged: 0, // TODO: sum position values when positions are live
         },
@@ -711,6 +761,49 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
         .flatMap(r => r.value);
 
       jsonResponse(res, { success: true, data: { positions: allPositions } });
+      return;
+    }
+
+    // AI reasoning endpoint - demonstrates the AI agent's decision making
+    if (path === '/api/ai/analyze' && method === 'POST') {
+      const body = await new Promise<string>((resolve) => {
+        let data = '';
+        req.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+        req.on('end', () => resolve(data));
+      });
+
+      const { poolAddress, currentPrice, positionRange, trigger } = JSON.parse(body);
+      const reasoner = new AIReasoner();
+
+      if (!reasoner.isConfigured) {
+        jsonResponse(res, { success: false, error: 'AI not configured' }, 500);
+        return;
+      }
+
+      const mockPosition = {
+        id: poolAddress || 'demo',
+        dex: 'meteora' as const,
+        pool: new PublicKey(poolAddress || '11111111111111111111111111111111'),
+        lowerPrice: new Decimal(positionRange?.lower || 90),
+        upperPrice: new Decimal(positionRange?.upper || 110),
+        strategy: { autoRebalance: true, minRebalanceInterval: 300, targetDailyYield: 0.1 },
+      } as any;
+
+      const marketCtx = {
+        currentPrice: new Decimal(currentPrice || 100),
+        priceChange1h: 0,
+        priceChange24h: 0,
+        volatility24h: 5,
+        poolTvl: new Decimal(1000000),
+        poolVolume24h: new Decimal(500000),
+        poolFeeRate: 30,
+        currentYield24h: 0.05,
+        gasEstimateSol: 0.002,
+        positionValueUsd: 1000,
+      };
+
+      const decision = await reasoner.analyzeRebalance(mockPosition, marketCtx, trigger || 'price_exit');
+      jsonResponse(res, { success: true, data: decision });
       return;
     }
 

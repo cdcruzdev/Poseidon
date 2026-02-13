@@ -61,7 +61,7 @@ async function fetchApi<T>(endpoint: string, retries = 3): Promise<T> {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {
-        signal: AbortSignal.timeout(10000), // 10 second timeout
+        signal: AbortSignal.timeout(30000), // 30 second timeout
       });
       
       if (!response.ok) {

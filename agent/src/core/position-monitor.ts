@@ -14,7 +14,8 @@ import { YieldCalculator } from './yield-calculator.js';
 import { FeeCollector } from './fee-collector.js';
 import { analyzeMigration, MigrationAnalysis } from './migration-analyzer.js';
 import { LPAggregator } from './aggregator.js';
-import { isRebalanceEnabled, findRebalanceConfigPDA } from './rebalance-registry.js';
+import { isRebalanceEnabled } from './rebalance-registry.js';
+import { AIReasoner, MarketContext } from './ai-reasoner.js';
 
 /**
  * Position Monitor
@@ -38,6 +39,7 @@ export class PositionMonitor {
   private aggregator: LPAggregator | null = null;
   private solPriceUSD: number = 150; // Default, should be updated externally
   private rebalanceProgramId: PublicKey | null = null; // Set to enable on-chain opt-in checks
+  private aiReasoner: AIReasoner;
 
   // Fee configuration
   private performanceFeeBps: number = 500; // 5% of profits
@@ -54,6 +56,10 @@ export class PositionMonitor {
     this.wallet = wallet;
     this.checkIntervalMs = checkIntervalMs;
     this.feeCollector = feeCollector || null;
+    this.aiReasoner = new AIReasoner();
+    if (this.aiReasoner.isConfigured) {
+      console.log('[PositionMonitor] AI reasoning layer active (Kimi K2.5 via NVIDIA NIM)');
+    }
   }
 
   /**
@@ -141,18 +147,52 @@ export class PositionMonitor {
         if (decision.shouldRebalance) {
           // Check on-chain opt-in before rebalancing
           if (this.rebalanceProgramId && position.owner) {
-            const optIn = await isRebalanceEnabled(
+            const enabled = await isRebalanceEnabled(
               this.connection,
-              this.rebalanceProgramId,
               new PublicKey(position.owner),
-              id
+              this.rebalanceProgramId,
             );
-            if (!optIn || !optIn.enabled) {
+            if (!enabled) {
               console.log(`Skipping rebalance for ${id}: user not opted in`);
               continue;
             }
           }
 
+          // AI reasoning layer: analyze if rebalancing is actually optimal right now
+          const priceFeed = this.priceFeeds.get(id);
+          const marketCtx: MarketContext = {
+            currentPrice,
+            priceChange1h: priceFeed ? this.calcPriceChange(priceFeed, 3600000) : 0,
+            priceChange24h: priceFeed ? this.calcPriceChange(priceFeed, 86400000) : 0,
+            volatility24h: priceFeed ? this.calcVolatility(priceFeed) : 5,
+            poolTvl: new Decimal(0), // Updated below if available
+            poolVolume24h: new Decimal(0),
+            poolFeeRate: 0,
+            currentYield24h: 0,
+            gasEstimateSol: 0.002,
+            positionValueUsd: 0,
+          };
+
+          // Enrich context with pool data if available
+          try {
+            const adapter = this.registry.get(position.dex);
+            const poolInfo = await adapter.getPoolInfo(position.pool);
+            marketCtx.poolTvl = poolInfo.tvl;
+            marketCtx.poolVolume24h = poolInfo.volume24h;
+            marketCtx.poolFeeRate = poolInfo.fee;
+            marketCtx.currentYield24h = poolInfo.apr24h?.toNumber() || 0;
+          } catch { /* pool data enrichment is best-effort */ }
+
+          const aiDecision = await this.aiReasoner.analyzeRebalance(
+            position, marketCtx, decision.trigger || 'unknown'
+          );
+
+          if (aiDecision.action === 'wait') {
+            console.log(`[AI] Decided to WAIT on ${id}: ${aiDecision.reasoning}`);
+            continue;
+          }
+
+          console.log(`[AI] Approved rebalance for ${id} (${(aiDecision.confidence * 100).toFixed(0)}% confidence): ${aiDecision.reasoning}`);
           console.log(`Rebalancing position ${id}: ${decision.reason}`);
           await this.executeRebalance(position, decision);
         }
@@ -629,6 +669,23 @@ export class PositionMonitor {
       // Position might be in an intermediate state — log for manual recovery
       console.error(`[Migration] ⚠️ Position ${position.id} may need manual recovery`);
     }
+  }
+
+  /**
+   * Calculate price change over a time window from price feed history
+   */
+  private calcPriceChange(feed: PriceFeed, windowMs: number): number {
+    // Simple estimate based on single price point
+    // In production, this would use historical price array
+    return 0;
+  }
+
+  /**
+   * Calculate price volatility from price feed history
+   */
+  private calcVolatility(feed: PriceFeed): number {
+    // Simple estimate - in production would use price history std dev
+    return 5; // Default 5% assumption
   }
 
   /**

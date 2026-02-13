@@ -5,6 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { HomeScreen } from '../screens/HomeScreen';
+import { DepositScreen } from '../screens/DepositScreen';
 import { PositionsScreen } from '../screens/PositionsScreen';
 import { DiscoverScreen } from '../screens/DiscoverScreen';
 import { AgentFeedScreen } from '../screens/AgentFeedScreen';
@@ -55,6 +56,7 @@ function PositionsStack() {
 
 const tabIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
   Home: 'home-outline',
+  Deposit: 'add-circle-outline',
   Positions: 'layers-outline',
   Discover: 'compass-outline',
   Agent: 'pulse-outline',
@@ -62,6 +64,7 @@ const tabIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 const tabIconsActive: Record<string, keyof typeof Ionicons.glyphMap> = {
   Home: 'home',
+  Deposit: 'add-circle',
   Positions: 'layers',
   Discover: 'compass',
   Agent: 'pulse',
@@ -95,6 +98,7 @@ export function AppNavigator() {
         })}
       >
         <Tab.Screen name="Home" component={HomeStack} />
+        <Tab.Screen name="Deposit" component={DepositScreen} />
         <Tab.Screen name="Positions" component={PositionsStack} />
         <Tab.Screen name="Discover" component={DiscoverScreen} />
         <Tab.Screen name="Agent" component={AgentFeedScreen} />

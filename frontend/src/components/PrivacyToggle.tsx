@@ -36,10 +36,7 @@ export default function PrivacyToggle({
             onClick={() => setShowInfo(!showInfo)}
             className="text-[#5a7090] hover:text-[#ffffff] transition-colors"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4M12 8h.01" />
-            </svg>
+            <span className="w-4 h-4 rounded-full border border-current flex items-center justify-center text-[9px] font-bold leading-none">i</span>
           </button>
         </div>
         <Toggle enabled={enabled} onChange={onEnabledChange} />

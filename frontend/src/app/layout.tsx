@@ -48,9 +48,9 @@ export default function RootLayout({
           style={{ 
             width: '100vw', 
             height: '100vh',
-            backgroundImage: 'url(/poseidon_bg_a_1920x1080.jpg)',
+            backgroundImage: 'url(/poseidon_bg_a_3840x2160.jpg)',
             backgroundSize: 'cover',
-            backgroundPosition: 'center',
+            backgroundPosition: 'center center',
             backgroundRepeat: 'no-repeat'
           }}
         />

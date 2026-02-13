@@ -21,7 +21,7 @@ const strategies: Strategy[] = [
     description: "Wider price range, fewer rebalances. Lower yield but minimal impermanent loss risk.",
     rangeWidth: "\u00B115%",
     rebalanceFreq: "~2x / week",
-    expectedApr: "15-40%",
+    expectedApr: "0.04-0.11%",
     ilRisk: "Low",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -36,7 +36,7 @@ const strategies: Strategy[] = [
     description: "Optimized range for fee capture with manageable rebalance frequency. Best for most users.",
     rangeWidth: "\u00B15%",
     rebalanceFreq: "~1x / day",
-    expectedApr: "40-120%",
+    expectedApr: "0.11-0.33%",
     ilRisk: "Medium",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -51,7 +51,7 @@ const strategies: Strategy[] = [
     description: "Concentrated liquidity for maximum fee capture. Higher yield but frequent rebalancing.",
     rangeWidth: "\u00B11.5%",
     rebalanceFreq: "~4x / day",
-    expectedApr: "120-400%",
+    expectedApr: "0.33-1.10%",
     ilRisk: "High",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

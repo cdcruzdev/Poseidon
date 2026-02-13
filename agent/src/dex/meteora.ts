@@ -31,12 +31,51 @@ export class MeteoraAdapter implements IDexAdapter {
 
   // Meteora API endpoints
   private readonly API_BASE = 'https://dlmm-api.meteora.ag';
+  
+  // Cache all pairs to avoid re-fetching the massive /pair/all endpoint
+  private pairsCache: any[] | null = null;
+  private pairsCacheTime = 0;
+  private pairsCachePromise: Promise<any[]> | null = null;
+  private readonly PAIRS_CACHE_TTL = 300_000; // 5 min
 
   async initialize(connection: Connection): Promise<void> {
     this.connection = connection;
-    // SDK loaded lazily when needed for transactions
-    // API-based reads work without SDK
-    console.log('Meteora adapter initialized (API mode)');
+    // Pre-warm the pairs cache in background
+    console.log('[Meteora] Pre-warming pairs cache...');
+    this.getAllPairsCached().then(() => {
+      console.log('[Meteora] Cache warmed!');
+    }).catch((e) => {
+      console.warn('[Meteora] Cache pre-warm failed:', e.message);
+    });
+    // Refresh cache every 2 min in background
+    setInterval(() => {
+      this.pairsCache = null; // Force refresh
+      this.pairsCacheTime = 0;
+      this.getAllPairsCached().catch(() => {});
+    }, this.PAIRS_CACHE_TTL);
+    console.log('Meteora adapter initialized (API mode, pre-warming cache)');
+  }
+  
+  private async getAllPairsCached(): Promise<any[]> {
+    const now = Date.now();
+    if (this.pairsCache && now - this.pairsCacheTime < this.PAIRS_CACHE_TTL) {
+      return this.pairsCache;
+    }
+    // Deduplicate concurrent fetches
+    if (this.pairsCachePromise) return this.pairsCachePromise;
+    this.pairsCachePromise = (async () => {
+      try {
+        const response = await fetch(`${this.API_BASE}/pair/all`);
+        const pairs = await response.json() as any[];
+        this.pairsCache = pairs;
+        this.pairsCacheTime = Date.now();
+        console.log(`[Meteora] Cached ${pairs.length} pairs`);
+        return pairs;
+      } finally {
+        this.pairsCachePromise = null;
+      }
+    })();
+    return this.pairsCachePromise;
   }
 
   private async loadSdkIfNeeded(): Promise<void> {
@@ -53,33 +92,33 @@ export class MeteoraAdapter implements IDexAdapter {
   async findPools(tokenA: PublicKey, tokenB: PublicKey): Promise<PoolInfo[]> {
     if (!this.connection) throw new Error('Adapter not initialized');
 
+    const tokenAStr = tokenA.toBase58();
+    const tokenBStr = tokenB.toBase58();
+
     try {
-      // Fetch all pairs from Meteora API
-      const response = await fetch(`${this.API_BASE}/pair/all`);
-      const pairs = await response.json() as any[];
-
-      // Filter for the token pair (check both orderings)
-      const tokenAStr = tokenA.toBase58();
-      const tokenBStr = tokenB.toBase58();
-
-      const matchingPairs = pairs.filter((pair: any) => {
+      // Use cached /pair/all data and filter client-side
+      // The /pair/all_by_groups endpoint ignores token mint filters (returns global top by TVL)
+      const allCachedPairs = await this.getAllPairsCached();
+      
+      // Filter for pairs matching both tokens (in either order)
+      const matchingPairs = allCachedPairs.filter((pair: any) => {
         const mintX = pair.mint_x;
         const mintY = pair.mint_y;
-        return (
-          (mintX === tokenAStr && mintY === tokenBStr) ||
-          (mintX === tokenBStr && mintY === tokenAStr)
-        );
+        return (mintX === tokenAStr && mintY === tokenBStr) ||
+               (mintX === tokenBStr && mintY === tokenAStr);
       });
 
-      // Sort by liquidity (TVL) descending - highest liquidity first
+      console.log(`[Meteora] Found ${matchingPairs.length} pools for ${tokenAStr.slice(0,4)}../${tokenBStr.slice(0,4)}..`);
+
+      // Sort by liquidity (TVL) descending
       matchingPairs.sort((a: any, b: any) => {
         const tvlA = parseFloat(a.liquidity || 0);
         const tvlB = parseFloat(b.liquidity || 0);
         return tvlB - tvlA;
       });
 
-      // Convert to PoolInfo format
-      return matchingPairs.map((pair: any) => this.convertToPoolInfo(pair));
+      // Return top 20 to avoid bloat
+      return matchingPairs.slice(0, 20).map((pair: any) => this.convertToPoolInfo(pair));
     } catch (error) {
       console.error('Error fetching Meteora pools:', error);
       return [];

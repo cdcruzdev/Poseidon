@@ -14,6 +14,7 @@ interface TokenSelectorProps {
   balance?: number;
   disabled?: boolean;
   usdPrice?: number;
+  tokenBalances?: Record<string, number>;
 }
 
 export default function TokenSelector({
@@ -26,6 +27,7 @@ export default function TokenSelector({
   balance,
   disabled = false,
   usdPrice = 0,
+  tokenBalances = {},
 }: TokenSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -49,6 +51,12 @@ export default function TokenSelector({
       token.symbol.toLowerCase().includes(search.toLowerCase()) ||
       token.name.toLowerCase().includes(search.toLowerCase())
     );
+  }).sort((a, b) => {
+    const balA = tokenBalances[a.symbol] || 0;
+    const balB = tokenBalances[b.symbol] || 0;
+    if (balA > 0 && balB <= 0) return -1;
+    if (balB > 0 && balA <= 0) return 1;
+    return 0;
   });
 
   const handleSelect = (token: Token) => {
@@ -137,26 +145,34 @@ export default function TokenSelector({
                     No tokens found
                   </div>
                 ) : (
-                  filteredTokens.map((token) => (
-                    <button
-                      key={token.symbol}
-                      onClick={() => handleSelect(token)}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#1a3050]/50 transition-colors"
-                    >
-                      <Image
-                        src={token.logo}
-                        alt={token.symbol}
-                        width={36}
-                        height={36}
-                        className="rounded-full"
-                        unoptimized
-                      />
-                      <div className="text-left">
-                        <div className="font-medium">{token.symbol}</div>
-                        <div className="text-xs text-[#5a7090]">{token.name}</div>
-                      </div>
-                    </button>
-                  ))
+                  filteredTokens.map((token) => {
+                    const bal = tokenBalances[token.symbol];
+                    return (
+                      <button
+                        key={token.symbol}
+                        onClick={() => handleSelect(token)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#1a3050]/50 transition-colors cursor-pointer"
+                      >
+                        <Image
+                          src={token.logo}
+                          alt={token.symbol}
+                          width={36}
+                          height={36}
+                          className="rounded-full"
+                          unoptimized
+                        />
+                        <div className="text-left flex-1">
+                          <div className="font-medium">{token.symbol}</div>
+                          <div className="text-xs text-[#5a7090]">{token.name}</div>
+                        </div>
+                        {bal !== undefined && bal > 0 && (
+                          <span className="text-sm text-[#5a7090]/70 font-mono">
+                            {bal < 0.0001 ? "<0.0001" : bal < 1 ? bal.toFixed(4) : bal < 1000 ? bal.toFixed(2) : bal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
                 )}
               </div>
             </div>

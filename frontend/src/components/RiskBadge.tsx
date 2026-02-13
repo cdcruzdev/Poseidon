@@ -29,7 +29,7 @@ const RISK_PROFILES: Record<RiskLevel, Omit<RiskProfile, "score">> = {
     color: "#4ade80",
     bgColor: "rgba(74, 222, 128, 0.1)",
     borderColor: "rgba(74, 222, 128, 0.3)",
-    icon: "Lo",
+    icon: "",
     description: "Low risk, stable pairs, high TVL",
   },
   moderate: {
@@ -38,7 +38,7 @@ const RISK_PROFILES: Record<RiskLevel, Omit<RiskProfile, "score">> = {
     color: "#7ec8e8",
     bgColor: "rgba(126, 200, 232, 0.1)",
     borderColor: "rgba(126, 200, 232, 0.3)",
-    icon: "Md",
+    icon: "",
     description: "Balanced risk-reward profile",
   },
   aggressive: {
@@ -47,7 +47,7 @@ const RISK_PROFILES: Record<RiskLevel, Omit<RiskProfile, "score">> = {
     color: "#fbbf24",
     bgColor: "rgba(251, 191, 36, 0.1)",
     borderColor: "rgba(251, 191, 36, 0.3)",
-    icon: "Hi",
+    icon: "",
     description: "Higher volatility, higher potential returns",
   },
   degen: {
@@ -56,7 +56,7 @@ const RISK_PROFILES: Record<RiskLevel, Omit<RiskProfile, "score">> = {
     color: "#f87171",
     bgColor: "rgba(248, 113, 113, 0.1)",
     borderColor: "rgba(248, 113, 113, 0.3)",
-    icon: "!!",
+    icon: "",
     description: "High risk, new/volatile tokens",
   },
 };
@@ -71,8 +71,8 @@ export function calculateRiskScore(pool: Pool): RiskProfile {
   let score = 50; // Start neutral
 
   // TVL factor (higher = safer)
-  if (pool.tvl >= 10_000_000) score -= 15;      // $10M+ = very safe
-  else if (pool.tvl >= 1_000_000) score -= 10;  // $1M+ = safe
+  if (pool.tvl >= 10_000_000) score -= 20;      // $10M+ = very safe
+  else if (pool.tvl >= 1_000_000) score -= 12;  // $1M+ = safe
   else if (pool.tvl >= 100_000) score -= 5;     // $100K+ = okay
   else if (pool.tvl < 10_000) score += 20;      // <$10K = risky
 
@@ -143,7 +143,7 @@ export default function RiskBadge({ pool, showTooltip = true, size = "sm" }: Ris
   const tokenB = getTokenSymbol(pool.tokenB);
 
   const sizeClasses = {
-    sm: "px-2 py-0.5 text-xs gap-1",
+    sm: "inline-flex items-center h-6 px-2 text-xs font-medium",
     md: "px-3 py-1 text-sm gap-1.5",
     lg: "px-4 py-1.5 text-base gap-2",
   };
@@ -159,7 +159,6 @@ export default function RiskBadge({ pool, showTooltip = true, size = "sm" }: Ris
           color: risk.color,
         }}
       >
-        <span>{risk.icon}</span>
         <span>{risk.label}</span>
       </div>
 

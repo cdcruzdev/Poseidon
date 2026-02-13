@@ -1,6 +1,5 @@
 ﻿import Navbar from "@/components/Navbar";
 import DepositCard from "@/components/DepositCard";
-import AgentHealthBar from "@/components/AgentHealthBar";
 import WalletGatedSections from "@/components/WalletGatedSections";
 
 export default function Home() {
@@ -22,9 +21,6 @@ export default function Home() {
                 We find the optimal pool automatically.
               </p>
             </section>
-
-            {/* Agent Health Bar - Live status */}
-            <AgentHealthBar />
 
             {/* Deposit Card - Centered */}
             <section className="mb-10 flex justify-center">

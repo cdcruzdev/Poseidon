@@ -13,6 +13,8 @@ interface PoolResultProps {
   onClick?: () => void;
   compact?: boolean;
   showSparkline?: boolean;
+  sortBy?: "yield" | "tvl";
+  isBest?: boolean;
 }
 
 // DEX brand colors - muted to fit Poseidon palette
@@ -42,6 +44,8 @@ export default function PoolResult({
   onClick,
   compact = false,
   showSparkline = true,
+  sortBy = "yield",
+  isBest = false,
 }: PoolResultProps) {
   // Generate mock APR history for sparkline
   const aprHistory = useMemo(() => {
@@ -114,17 +118,22 @@ export default function PoolResult({
             dexLogos[pool.dex]
           )}
         </div>
-        <div className="flex-1 text-left">
+        <div className="flex-1 text-left flex items-center gap-2">
           <span className="font-medium capitalize text-[#e0e8f0]">{pool.dex}</span>
+          {isBest && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#7ec8e8]/15 text-[#7ec8e8] font-semibold leading-none">
+              Best
+            </span>
+          )}
         </div>
         <div className="text-right">
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-[#5a7090]">24h Yield</span>
-            <span className="text-sm font-semibold text-[#7ec8e8]">{yield24h.toFixed(3)}%</span>
-          </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <span className="text-[10px] text-[#5a7090]">TVL</span>
-            <span className="text-xs text-[#5a7090]">{tvlFormatted}</span>
+            <span className={sortBy === "tvl" ? "text-sm font-semibold text-[#7ec8e8]" : "text-xs text-[#5a7090]"}>{tvlFormatted}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-[#5a7090]">24h Yield</span>
+            <span className={sortBy === "yield" ? "text-sm font-semibold text-[#7ec8e8]" : "text-xs text-[#5a7090]"}>{yield24h.toFixed(3)}%</span>
           </div>
         </div>
       </button>
@@ -168,14 +177,14 @@ export default function PoolResult({
 
         {/* Pool Info */}
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold capitalize text-[#e0e8f0]">{pool.dex}</span>
-            <span className="text-xs px-2 py-0.5 rounded-md bg-[#1a3050] text-[#7ec8e8]">
+          <span className="font-semibold capitalize text-[#e0e8f0]">{pool.dex}</span>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="inline-flex items-center h-6 text-xs px-2 rounded-md bg-[#1a3050] text-[#7ec8e8] border border-[#1a3050] font-medium">
               {poolTypeLabel}
             </span>
-            <RiskBadge pool={pool} size="sm" />
+            <RiskBadge pool={pool} size="sm" showTooltip={false} />
           </div>
-          <div className="text-sm text-[#5a7090] mt-0.5">
+          <div className="text-sm text-[#5a7090] mt-1">
             Fee: {(pool.feeRate * 100).toFixed(2)}% | TVL: {tvlFormatted}
           </div>
         </div>

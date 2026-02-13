@@ -30,7 +30,7 @@ async function main() {
 
   // Load configuration
   const config: AgentConfig = {
-    rpcUrl: process.env.RPC_URL || 'https://api.devnet.solana.com',
+    rpcUrl: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
     wsUrl: process.env.WS_URL,
     walletPath: process.env.WALLET_PATH || './wallet.json',
     priceCheckIntervalMs: parseInt(process.env.PRICE_CHECK_INTERVAL_MS || '60000'),

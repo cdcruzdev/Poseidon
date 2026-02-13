@@ -29,15 +29,15 @@ function section(title: string) {
 const FAKE_POOL = new PublicKey('11111111111111111111111111111111');
 const FAKE_OWNER = new PublicKey('11111111111111111111111111111111');
 
-function makePosition(overrides: Partial<Position> & { lowerPrice: Decimal; upperPrice: Decimal }): Position {
+function makePosition(overrides: Partial<Position> = {}): Position {
   const base: Position = {
     id: 'test-pos-1',
     owner: FAKE_OWNER,
     dex: 'orca',
     pool: FAKE_POOL,
     liquidity: new Decimal(1000),
-    lowerPrice: overrides.lowerPrice,
-    upperPrice: overrides.upperPrice,
+    lowerPrice: new Decimal(90),
+    upperPrice: new Decimal(110),
     tokenAAmount: new Decimal(500),
     tokenBAmount: new Decimal(500),
     unclaimedFeesA: new Decimal(5),

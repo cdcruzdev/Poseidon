@@ -134,28 +134,6 @@ export default function APRSparkline({
         )}
       </div>
 
-      {/* Hover tooltip */}
-      <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
-        <div className="bg-[#0a1520] border border-[#1a3050] rounded-lg p-2 shadow-xl whitespace-nowrap">
-          <div className="text-xs text-[#5a7090] mb-1">7-Day Yield Trend</div>
-          <div className="flex items-center gap-3 text-xs">
-            <div>
-              <span className="text-[#5a7090]">Min: </span>
-              <span className="text-[#8899aa]">{minY.toFixed(1)}%</span>
-            </div>
-            <div>
-              <span className="text-[#5a7090]">Max: </span>
-              <span className="text-[#8899aa]">{maxY.toFixed(1)}%</span>
-            </div>
-            <div>
-              <span className="text-[#5a7090]">Avg: </span>
-              <span className="text-[#7ec8e8]">{avgY.toFixed(1)}%</span>
-            </div>
-          </div>
-          {/* Arrow */}
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#0a1520] border-r border-b border-[#1a3050]" />
-        </div>
-      </div>
     </div>
   );
 }

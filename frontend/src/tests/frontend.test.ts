@@ -3,7 +3,7 @@ import { createHash } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 
-const PROGRAM_ID = new PublicKey("2ro3VBKvqtc86DJVMnZETHMGAtjYFipZwdMFgtZGWscx");
+const PROGRAM_ID = new PublicKey("HLsgAVzjjBaBR9QCLqV3vjC9LTnR2xtmtB77j1EJQBsZ");
 const FRONTEND = path.resolve(__dirname, "../..");
 
 let passed = 0;

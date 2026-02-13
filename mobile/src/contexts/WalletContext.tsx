@@ -13,7 +13,7 @@ const APP_IDENTITY = {
   icon: 'favicon.ico',
 };
 
-const CLUSTER = 'devnet';
+const CLUSTER = 'mainnet-beta';
 
 const STORAGE_KEY_PUBKEY = '@poseidon_wallet_pubkey';
 const STORAGE_KEY_AUTH = '@poseidon_wallet_auth';
