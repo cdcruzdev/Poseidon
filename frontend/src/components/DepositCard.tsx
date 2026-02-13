@@ -506,6 +506,7 @@ export default function DepositCard() {
             />
           )}
 
+          {/* TODO: Re-enable when per-position rebalance program is funded + Arcium integration complete
           <div className="space-y-3 pt-2">
             <AutoRebalance
               enabled={autoRebalance}
@@ -518,6 +519,7 @@ export default function DepositCard() {
               onEnabledChange={setPrivacyEnabled}
             />
           </div>
+          */}
 
           {canDeposit && (
             <div className="border-t border-[#1a3050] pt-3 space-y-1">
@@ -560,9 +562,11 @@ export default function DepositCard() {
                   </svg>
                   <span className="text-[#4ade80] font-medium">Deposit Successful!</span>
                 </div>
+                {/* TODO: Re-enable with per-position rebalance
                 {autoRebalance && (
                   <p className="text-xs text-[#7ec8e8] text-center">Auto-rebalance enabled</p>
                 )}
+                */}
                 {txSignature && (
                   <a
                     href={`https://orbmarkets.io/tx/${txSignature}`}

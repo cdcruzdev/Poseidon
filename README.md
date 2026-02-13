@@ -1,20 +1,23 @@
 # Poseidon -- LP Aggregator for Solana
 
-Compare, deploy, and auto-rebalance LP positions across Meteora, Orca, and Raydium from one interface.
+Compare and deploy LP positions across Meteora, Orca, and Raydium from one interface.
 
-Built for the Colosseum Agent Hackathon (Feb 2-12, 2026). 100% AI-written code.
+Built for the Colosseum Agent Hackathon (Feb 2-13, 2026). 100% AI-written code.
 
 ## What It Does
 
-Poseidon is an autonomous LP management agent for Solana. It solves four problems:
+Poseidon is an LP management platform for Solana. It solves three problems:
 
-1. **Fragmentation** -- Three major concentrated liquidity DEXs, three different UIs, no way to compare. Poseidon aggregates Meteora DLMM, Orca Whirlpools, and Raydium CLMM into one interface with objective yield scoring.
+1. **Fragmentation** -- Three major concentrated liquidity DEXs, three different UIs, no way to compare. Poseidon aggregates Meteora DLMM, Orca Whirlpools, and Raydium CLMM into one interface with real-time yield data from each DEX's API.
 
-2. **Manual management** -- When price moves out of your LP range, you stop earning. Poseidon monitors 24/7 and rebalances automatically using on-chain opt-in (configurable slippage and yield thresholds).
+2. **Complexity** -- Setting up concentrated liquidity requires understanding tick spacing, fee tiers, and range width across different protocols. Poseidon handles all of that: pick your tokens, pick your amount, and we find the best pool and deposit in one click.
 
-3. **Privacy** -- LP positions are public on-chain. Poseidon integrates Arcium MPC for encrypted position management so nobody can see your strategy.
+3. **Visibility** -- Track all your LP positions across every DEX in one dashboard with real deposited values, current values, P&L, and estimated yields pulled directly from on-chain data and DEX APIs.
 
-4. **Complexity** -- Setting up concentrated liquidity requires understanding tick spacing, fee tiers, and range width. Poseidon offers target yield mode: set your desired daily yield and the agent calculates the optimal range.
+### Roadmap (In Progress)
+
+- **Auto-Rebalancing** -- On-chain rebalance program deployed to mainnet (`HLsgAVzjjBaBR9QCLqV3vjC9LTnR2xtmtB77j1EJQBsZ`). Wallet-level opt-in live; per-position granularity ready to deploy. Agent monitors positions and rebalances when price drifts out of range.
+- **Privacy Layer** -- Arcium MPC integration for encrypted position management (devnet prototype complete).
 
 ## Architecture
 
@@ -25,8 +28,9 @@ poseidon/
       core/           Aggregator, yield calc, position monitor, fee collector
       dex/            Native adapters for Meteora, Orca, Raydium
       wallet/         AgentWallet, transaction helpers
-  programs/           Anchor (Rust) on-chain rebalance program
-  arcium/             Arcium MPC privacy layer (devnet)
+  programs/
+    poseidon-native/  Native Solana program (Rust) -- rebalance config (mainnet)
+    poseidon-rebalance/ Anchor program (devnet)
   frontend/           Next.js 14 dashboard
   mobile/             React Native (Expo) mobile app
   tests/              Integration + unit tests (113+ passing)
@@ -35,42 +39,46 @@ poseidon/
 | Layer | Stack |
 |-------|-------|
 | Agent | TypeScript, @solana/web3.js, Express |
-| On-chain | Anchor (Rust), Solana devnet |
-| Privacy | Arcium MPC (encrypted state, threshold signatures) |
+| On-chain | Native Solana program (Rust), BPFLoaderUpgradeable, mainnet |
 | Web | Next.js 14, React, TailwindCSS, Solana Wallet Adapter |
 | Mobile | React Native, Expo, Solana Mobile Wallet Adapter |
 
-## On-Chain Programs
+## On-Chain Program
 
-**Rebalance Program:** `2ro3VBKvqtc86DJVMnZETHMGAtjYFipZwdMFgtZGWscx` (Devnet)
+**Poseidon Native:** `HLsgAVzjjBaBR9QCLqV3vjC9LTnR2xtmtB77j1EJQBsZ` (Mainnet)
 
-Stores per-user rebalance preferences on-chain:
-- `enable_rebalance` -- opt in with max slippage + min yield improvement
+Stores rebalance preferences on-chain:
+- `enable_rebalance` -- opt in with max slippage + min yield thresholds
 - `disable_rebalance` -- opt out
 - `execute_rebalance` -- agent-only, records rebalance events
 
-**Arcium MPC:** Deployed to devnet. Handles encrypted deposits and private position state.
+Upgrade authority held by project wallet. CI/CD pipeline via GitHub Actions for verifiable builds and upgrades.
+
+## Key Features
+
+- **One-click deposits** across Orca Whirlpools, Raydium CLMM, and Meteora DLMM
+- **Real-time pool comparison** with yield scoring, TVL, and fee tier data
+- **Position dashboard** with on-chain position data (not transaction history parsing)
+- **Estimated 24h yields** calculated per-position using pool volume and fee data from DEX APIs
+- **Mobile app** with Solana Mobile Wallet Adapter (MWA) for native wallet connection
+- **Responsive design** -- web app works on desktop and mobile browsers
 
 ## Fee Model
 
 | Fee | Amount | Details |
 |-----|--------|---------|
 | Deposit | 0.1% | Aggregation service |
-| Performance | 5% of earned LP fees | 98% treasury, 2% agent gas |
-| Free tier | $0 | Aggregator view, no auto-rebalance |
-
-Users keep 95% of their yield. Poseidon earns when users earn.
+| Performance | 5% of earned LP fees | When auto-rebalance is active |
+| Free tier | $0 | Aggregator view + manual management |
 
 ## Agent Components
 
 - **Aggregator** -- Fetches and scores pools across all three DEXs
 - **Yield Calculator** -- Normalizes APR across different fee structures
-- **Position Monitor** -- Tracks range, triggers rebalance when beneficial
+- **Position Monitor** -- Tracks range status across DEXs
 - **Fee Collector** -- Self-sustaining fee model (deposit + performance)
-- **Migration Analyzer** -- Detects when switching pools would improve yield
 - **Reasoning Logger** -- Transparent agent decision logging
 - **Activity Tracker** -- Full audit trail of agent actions
-- **Price Oracle** -- Real-time price feeds for rebalance decisions
 
 ## Test Coverage
 
@@ -79,8 +87,8 @@ Users keep 95% of their yield. Poseidon earns when users earn.
 - `aggregator` -- pool discovery, ranking, cross-DEX comparison
 - `fee-collector` -- fee calculation, treasury splits
 - `position-monitor` -- rebalance triggers, range detection
-- `api-server` -- REST API endpoints (5 endpoints, all verified)
-- `arcium-privacy` -- encryption verification, wrong-key rejection
+- `api-server` -- REST API endpoints
+- `arcium-privacy` -- encryption verification
 
 ## Getting Started
 
@@ -94,13 +102,13 @@ cd frontend && pnpm install && pnpm dev
 # Mobile (requires Android SDK)
 cd mobile && npm install && npx expo start
 
-# Anchor program
-anchor build && anchor deploy --provider.cluster devnet && anchor test
+# Native program (requires Rust + Solana CLI)
+cd programs/poseidon-native && cargo build-sbf
 ```
 
 ## Mobile App
 
-React Native app with Solana Mobile Wallet Adapter (MWA) for native wallet connection. Supports the same deposit flow as web with hot reload dev server.
+React Native app with Solana Mobile Wallet Adapter (MWA) for native wallet connection. Supports the same deposit flow as web.
 
 Built locally with Gradle (arm64-v8a). Tested on Samsung Galaxy S25.
 

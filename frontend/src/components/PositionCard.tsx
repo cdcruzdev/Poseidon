@@ -66,6 +66,7 @@ export default function PositionCard({
             >
               {pos.status === "in-range" ? "● In Range" : "○ Out of Range"}
             </span>
+            {/* TODO: Re-enable when per-position rebalance is funded
             <span
               className="text-xs px-2 py-0.5 rounded"
               style={{
@@ -75,6 +76,7 @@ export default function PositionCard({
             >
               {rebalanceOn ? "⟳ Auto-Rebalance" : "Manual"}
             </span>
+            */}
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-[#5a7090]">{pos.age && pos.age !== "-" ? `${pos.age} old` : ""}</span>
@@ -119,6 +121,7 @@ export default function PositionCard({
               <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">Fees Earned</p>
               <p className="text-sm font-mono text-[#4ade80]">{pos.feesEarned}</p>
             </div>
+            {/* TODO: Re-enable rebalance stats + toggle when per-position program is funded
             <div>
               <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">Rebalances</p>
               <p className="text-sm font-mono text-[#fbbf24]">{pos.rebalances}</p>
@@ -144,6 +147,7 @@ export default function PositionCard({
                 </span>
               </button>
             </div>
+            */}
           </div>
           <div className="flex gap-2 mt-4">
             {onClose && (

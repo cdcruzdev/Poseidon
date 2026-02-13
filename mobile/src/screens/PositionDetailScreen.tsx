@@ -67,7 +67,7 @@ export function PositionDetailScreen({ route }: any) {
       <Card>
         <Text style={styles.valueLabel}>Position Value</Text>
         <Text style={styles.value}>
-          {privacyMode ? '••••••' : `$${position.value.toFixed(2)}`}
+          {`$${position.value.toFixed(2)}`}
         </Text>
         <View style={styles.statsRow}>
           <View style={styles.stat}>
@@ -103,7 +103,7 @@ export function PositionDetailScreen({ route }: any) {
         </View>
       </Card>
 
-      {/* Controls */}
+      {/* TODO: Re-enable when per-position rebalance program is funded + Arcium integration complete
       <Card>
         <View style={styles.toggleRow}>
           <View>
@@ -130,6 +130,7 @@ export function PositionDetailScreen({ route }: any) {
           />
         </View>
       </Card>
+      */}
 
       {/* Actions */}
       <View style={styles.actions}>

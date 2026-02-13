@@ -616,6 +616,7 @@ export function HomeScreen({ navigation }: any) {
             </View>
           )}
 
+          {/* TODO: Re-enable when per-position rebalance program is funded + Arcium integration complete
           <View style={styles.toggleSection}>
             <View style={styles.toggleRow}>
               <Text style={styles.toggleLabel}>Auto-Rebalancing</Text>
@@ -664,6 +665,7 @@ export function HomeScreen({ navigation }: any) {
               </View>
             )}
           </View>
+          */}
 
           {parsedA > 0 && connected && selectedPool && (
             <View style={styles.feeSection}>

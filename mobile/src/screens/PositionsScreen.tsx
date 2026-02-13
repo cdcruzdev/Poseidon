@@ -153,6 +153,7 @@ export function PositionsScreen({ navigation }: any) {
                           ${item.feesEarned.toFixed(2)}
                         </Text>
                       </View>
+                      {/* TODO: Re-enable rebalance badge when per-position program is funded
                       <View style={styles.rebalanceBadge}>
                         <Ionicons
                           name={item.autoRebalance ? 'sync-circle' : 'sync-circle-outline'}
@@ -160,6 +161,7 @@ export function PositionsScreen({ navigation }: any) {
                           color={item.autoRebalance ? colors.accent : colors.text.faint}
                         />
                       </View>
+                      */}
                     </View>
                   </Card>
                 </TouchableOpacity>
