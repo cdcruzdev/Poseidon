@@ -89,16 +89,26 @@ async function fetchRaydiumPools(mintA: string, mintB: string): Promise<any[]> {
 
 async function fetchMeteoraPools(mintA: string, mintB: string): Promise<any[]> {
   try {
-    const res = await fetch("https://dlmm-api.meteora.ag/pair/all", {
-      signal: AbortSignal.timeout(10000),
-    });
+    // Use grouped search endpoint (pair/all is 149MB+ and times out)
+    const res = await fetch(
+      `https://dlmm-api.meteora.ag/pair/all_by_groups?page=0&limit=50&sort_key=tvl&order_by=desc&search_term=${mintA}&include_unknown=false`,
+      { signal: AbortSignal.timeout(10000) }
+    );
     if (!res.ok) return [];
     const data = await res.json();
-    const pools = (Array.isArray(data) ? data : []).filter((p: any) => {
-      const mints = [p.mint_x, p.mint_y];
-      return mints.includes(mintA) && mints.includes(mintB);
-    });
-    return pools.map((p: any) => ({
+    
+    // Extract matching pairs from groups
+    const allPairs: any[] = [];
+    for (const group of (data.groups || [])) {
+      for (const p of (group.pairs || [])) {
+        const mints = [p.mint_x, p.mint_y];
+        if (mints.includes(mintA) && mints.includes(mintB)) {
+          allPairs.push(p);
+        }
+      }
+    }
+
+    return allPairs.map((p: any) => ({
       address: p.address,
       dex: "meteora" as const,
       tokenA: p.name?.split("-")[0]?.trim() || "?",
