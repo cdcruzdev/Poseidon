@@ -29,14 +29,14 @@ function parseTxError(raw: string): string {
     return "Insufficient token balance.";
   if (lower.includes("blockhash") || lower.includes("expired"))
     return "Transaction expired. Please try again.";
-  if (lower.includes("timeout") || lower.includes("timed out"))
-    return "Transaction timed out. Please try again.";
+  if (lower.includes("timeout") || lower.includes("timed out") || lower.includes("not confirmed"))
+    return "Transaction timed out. Check Solscan for status.";
   if (lower.includes("slippage") || lower.includes("exceeds desired"))
     return "Price moved too much (slippage). Try again or increase slippage tolerance.";
   if (lower.includes("simulation failed"))
     return "Transaction simulation failed. Try a smaller amount or different pool.";
   // Fallback: truncate if too long
-  if (raw.length > 120) return raw.slice(0, 100) + "...";
+  if (raw.length > 60) return raw.slice(0, 55) + "...";
   return raw;
 }
 
