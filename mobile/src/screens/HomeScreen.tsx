@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ImageBackground, TextInput, ActivityIndicator, Image,
@@ -23,11 +23,13 @@ const COINGECKO_IDS: Record<string, string> = {
 
 // Sanitize amount input: only digits and one decimal point
 function sanitizeAmount(val: string): string {
-  // Remove everything except digits and dots
   let clean = val.replace(/[^0-9.]/g, '');
-  // Only allow one decimal point
   const parts = clean.split('.');
   if (parts.length > 2) clean = parts[0] + '.' + parts.slice(1).join('');
+  // Max 4 decimal places
+  if (parts.length === 2 && parts[1].length > 4) {
+    clean = parts[0] + '.' + parts[1].slice(0, 4);
+  }
   return clean;
 }
 
@@ -175,7 +177,7 @@ const tss = StyleSheet.create({
   },
   tokenLogo: { width: 28, height: 28, borderRadius: 14 },
   tokenSymbol: { color: '#e0e8f0', fontSize: 16, fontWeight: '700' },
-  amountInput: { flex: 1, color: '#ffffff', fontSize: 22, fontWeight: '600' },
+  amountInput: { flex: 1, color: '#ffffff', fontSize: 20, fontWeight: '600' },
   maxBtn: {
     paddingHorizontal: 8, paddingVertical: 4,
     backgroundColor: 'rgba(126,200,232,0.1)', borderRadius: 6,
@@ -393,7 +395,7 @@ export function HomeScreen({ navigation }: any) {
     debounceA.current = setTimeout(() => {
       if (val && tokenPrices.tokenA > 0 && tokenPrices.tokenB > 0) {
         const usdVal = parseFloat(val) * tokenPrices.tokenA;
-        setAmountB((usdVal / tokenPrices.tokenB).toFixed(6));
+        setAmountB((usdVal / tokenPrices.tokenB).toFixed(4));
       }
     }, 500);
   };
@@ -409,7 +411,7 @@ export function HomeScreen({ navigation }: any) {
     debounceB.current = setTimeout(() => {
       if (val && tokenPrices.tokenA > 0 && tokenPrices.tokenB > 0) {
         const usdVal = parseFloat(val) * tokenPrices.tokenB;
-        setAmountA((usdVal / tokenPrices.tokenA).toFixed(6));
+        setAmountA((usdVal / tokenPrices.tokenA).toFixed(4));
       }
     }, 500);
   };
@@ -425,12 +427,12 @@ export function HomeScreen({ navigation }: any) {
 
   const handleMaxA = () => {
     if (maxBalanceA !== undefined) {
-      handleAmountAChange(maxBalanceA.toString());
+      handleAmountAChange(parseFloat(maxBalanceA.toFixed(4)).toString());
     }
   };
   const handleMaxB = () => {
     if (maxBalanceB !== undefined) {
-      handleAmountBChange(maxBalanceB.toString());
+      handleAmountBChange(parseFloat(maxBalanceB.toFixed(4)).toString());
     }
   };
 
