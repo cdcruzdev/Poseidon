@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ImageBackground, RefreshControl,
+  ImageBackground, RefreshControl, StatusBar,
 } from 'react-native';
+// StatusBar.currentHeight used for safe area padding
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
 import { StatusDot } from '../components/StatusDot';
@@ -24,6 +26,7 @@ interface Position {
 }
 
 export function PositionsScreen({ navigation }: any) {
+  const statusBarHeight = StatusBar.currentHeight || 24;
   const { connected } = useWallet();
   const [refreshing, setRefreshing] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -41,6 +44,7 @@ export function PositionsScreen({ navigation }: any) {
   if (!connected) {
     return (
       <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
+        <LinearGradient colors={['rgba(6,14,24,0.95)', 'rgba(6,14,24,0.7)', 'transparent']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: statusBarHeight + 20, zIndex: 10 }} pointerEvents="none" />
         <View style={styles.emptyContainer}>
           <SharedHeader title="POSITIONS" subtitle="Your active LP positions across DEXs" />
           <View style={styles.emptyContent}>
@@ -56,6 +60,7 @@ export function PositionsScreen({ navigation }: any) {
 
   return (
     <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
+      <LinearGradient colors={['rgba(6,14,24,0.95)', 'rgba(6,14,24,0.7)', 'transparent']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: statusBarHeight + 20, zIndex: 10 }} pointerEvents="none" />
       <View style={styles.container}>
         <SharedHeader title="POSITIONS" subtitle="Your active LP positions across DEXs" />
 

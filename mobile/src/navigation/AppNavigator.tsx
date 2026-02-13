@@ -72,6 +72,7 @@ export function AppNavigator() {
         id="MainTabs"
         screenOptions={({ route }) => ({
           headerShown: false,
+          tabBarHideOnKeyboard: true,
           tabBarStyle: {
             backgroundColor: colors.bg.base,
             borderTopColor: colors.border.subtle,

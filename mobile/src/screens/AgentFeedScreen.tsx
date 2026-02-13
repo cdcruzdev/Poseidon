@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, RefreshControl, ImageBackground,
+  View, Text, StyleSheet, FlatList, RefreshControl, ImageBackground, StatusBar,
 } from 'react-native';
+// StatusBar.currentHeight used for safe area padding
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
@@ -43,6 +44,7 @@ function formatTime(ts: string): string {
 }
 
 export function AgentFeedScreen() {
+  const statusBarHeight = StatusBar.currentHeight || 24;
   const { data: feed, loading, refresh } = useApi(async () => {
     return await api.fetchAgentActivity();
   });
@@ -58,19 +60,19 @@ export function AgentFeedScreen() {
 
   return (
     <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
+    <LinearGradient colors={['rgba(6,14,24,0.95)', 'rgba(6,14,24,0.7)', 'transparent']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: statusBarHeight + 20, zIndex: 10 }} pointerEvents="none" />
     <View style={styles.container}>
       <SharedHeader title="AGENT FEED" subtitle="Real-time actions from your Poseidon agent" />
 
-      {items.length === 0 && !loading && (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 100 }}>
+      {items.length === 0 && !loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 100, gap: 16, paddingHorizontal: 20 }}>
           <Ionicons name="pulse-outline" size={48} color={colors.text.faint} />
-          <Text style={{ color: colors.text.primary, fontSize: 18, fontWeight: '700', marginTop: 16 }}>No Activity Yet</Text>
-          <Text style={{ color: colors.text.muted, fontSize: 14, marginTop: 8, textAlign: 'center', paddingHorizontal: 40 }}>
+          <Text style={{ color: colors.text.primary, fontSize: 20, fontWeight: '700' }}>No Activity Yet</Text>
+          <Text style={{ color: colors.text.muted, fontSize: 14, textAlign: 'center', maxWidth: 260 }}>
             Agent actions will appear here once you have active positions
           </Text>
         </View>
-      )}
-
+      ) : (
       <FlatList
         data={items}
         keyExtractor={item => item.id}
@@ -97,6 +99,7 @@ export function AgentFeedScreen() {
           </View>
         )}
       />
+      )}
     </View>
     </ImageBackground>
   );

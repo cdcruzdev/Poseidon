@@ -1,10 +1,12 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ImageBackground, TextInput, ActivityIndicator, Image,
-  LayoutAnimation, Platform, UIManager, Switch,
+  LayoutAnimation, Platform, UIManager, Switch, StatusBar,
 } from 'react-native';
+// StatusBar.currentHeight used for safe area padding
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
 import { SharedHeader } from '../components/SharedHeader';
@@ -89,14 +91,12 @@ function TokenSelector({
     <View style={tss.container}>
       <View style={tss.labelRow}>
         <Text style={tss.label}>{label}</Text>
-        {balance !== undefined && (
-          <Text style={tss.balanceText}>
-            Balance: <Text style={{ color: '#fff' }}>{balance < 0.0001 ? '<0.0001' : balance.toFixed(4)}</Text>
-          </Text>
-        )}
+        <Text style={tss.balanceText}>
+          Balance: <Text style={{ color: '#fff' }}>{balance !== undefined ? (balance < 0.0001 && balance > 0 ? '<0.0001' : balance.toFixed(4)) : '0.0000'}</Text>
+        </Text>
       </View>
 
-      <View style={tss.row}>
+      <View style={tss.row} key={`row-${selectedToken?.symbol}-${balance !== undefined && balance > 0 ? 'max' : 'nomax'}`}>
         <TouchableOpacity style={tss.tokenBtn} onPress={onToggleOpen} activeOpacity={0.7}>
           {selectedToken ? (
             <Image source={{ uri: selectedToken.logo }} style={tss.tokenLogo} />
@@ -122,7 +122,7 @@ function TokenSelector({
         )}
       </View>
 
-      {usdValue && <Text style={tss.usdValue}>~ ${usdValue}</Text>}
+      <Text style={[tss.usdValue, { opacity: usdValue ? 1 : 0 }]}>~ ${usdValue || '0.00'}</Text>
 
       {isOpen && (
         <View style={tss.dropdown}>
@@ -169,7 +169,7 @@ const tss = StyleSheet.create({
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   label: { fontSize: 13, color: '#7090a0' },
   balanceText: { fontSize: 12, color: '#7090a0' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  row: { flexDirection: 'row', alignItems: 'center' },
   tokenBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 12, paddingVertical: 8,
@@ -177,10 +177,10 @@ const tss = StyleSheet.create({
   },
   tokenLogo: { width: 28, height: 28, borderRadius: 14 },
   tokenSymbol: { color: '#e0e8f0', fontSize: 16, fontWeight: '700' },
-  amountInput: { flex: 1, color: '#ffffff', fontSize: 20, fontWeight: '600' },
+  amountInput: { flex: 1, color: '#ffffff', fontSize: 20, fontWeight: '600', marginLeft: 8 },
   maxBtn: {
     paddingHorizontal: 8, paddingVertical: 4,
-    backgroundColor: 'rgba(126,200,232,0.1)', borderRadius: 6,
+    backgroundColor: 'rgba(126,200,232,0.1)', borderRadius: 6, marginLeft: 8,
   },
   maxText: { color: '#7ec8e8', fontSize: 11, fontWeight: '700' },
   usdValue: { color: '#5a7090', fontSize: 12, textAlign: 'right', marginTop: 6 },
@@ -231,8 +231,8 @@ function PoolResultCard({
           </View>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={pss.compactTvl}>TVL {tvlFormatted}</Text>
-          <Text style={pss.compactYield}>{yield24h.toFixed(3)}%</Text>
+          <Text style={pss.compactTvl}>{tvlFormatted}</Text>
+          <Text style={pss.compactYield}>{yield24h.toFixed(3)}% 24h</Text>
         </View>
       </TouchableOpacity>
     );
@@ -280,14 +280,15 @@ const pss = StyleSheet.create({
   compactSelected: { borderColor: 'rgba(126,200,232,0.5)', backgroundColor: 'rgba(126,200,232,0.1)' },
   compactLogo: { width: 28, height: 28, borderRadius: 8 },
   compactDex: { color: '#e0e8f0', fontSize: 14, fontWeight: '600' },
-  compactTvl: { color: '#5a7090', fontSize: 11 },
-  compactYield: { color: '#7ec8e8', fontSize: 13, fontWeight: '700' },
+  compactTvl: { color: '#7ec8e8', fontSize: 13, fontWeight: '700' },
+  compactYield: { color: '#5a7090', fontSize: 11 },
   bestBadge: { backgroundColor: 'rgba(126,200,232,0.15)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 },
   bestBadgeText: { color: '#7ec8e8', fontSize: 9, fontWeight: '700' },
 });
 
 // ---------- Main Home Screen ----------
 export function HomeScreen({ navigation }: any) {
+  const statusBarHeight = StatusBar.currentHeight || 24;
   const { connected, connect, publicKey } = useWallet();
   const [tokenA, setTokenA] = useState<Token>(TOKENS[0]);
   const [tokenB, setTokenB] = useState<Token>(TOKENS[1]);
@@ -298,6 +299,9 @@ export function HomeScreen({ navigation }: any) {
   const [bestPool, setBestPool] = useState<Pool | null>(null);
   const [loading, setLoading] = useState(false);
   const [autoRebalance, setAutoRebalance] = useState(true);
+  const [targetYield, setTargetYield] = useState('0.10');
+  const [slippageBps, setSlippageBps] = useState(100);
+  const [showSlippage, setShowSlippage] = useState(false);
   const [privacy, setPrivacy] = useState(true);
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [tokenPrices, setTokenPrices] = useState({ tokenA: 0, tokenB: 0 });
@@ -387,11 +391,12 @@ export function HomeScreen({ navigation }: any) {
   const handleAmountAChange = (val: string) => {
     setAmountA(val);
     lastEditRef.current = 'a';
+    if (debounceA.current) clearTimeout(debounceA.current);
+    if (debounceB.current) clearTimeout(debounceB.current);
     if (!val || val === '0' || val === '0.') {
       setAmountB('');
       return;
     }
-    if (debounceA.current) clearTimeout(debounceA.current);
     debounceA.current = setTimeout(() => {
       if (val && tokenPrices.tokenA > 0 && tokenPrices.tokenB > 0) {
         const usdVal = parseFloat(val) * tokenPrices.tokenA;
@@ -403,11 +408,12 @@ export function HomeScreen({ navigation }: any) {
   const handleAmountBChange = (val: string) => {
     setAmountB(val);
     lastEditRef.current = 'b';
+    if (debounceA.current) clearTimeout(debounceA.current);
+    if (debounceB.current) clearTimeout(debounceB.current);
     if (!val || val === '0' || val === '0.') {
       setAmountA('');
       return;
     }
-    if (debounceB.current) clearTimeout(debounceB.current);
     debounceB.current = setTimeout(() => {
       if (val && tokenPrices.tokenA > 0 && tokenPrices.tokenB > 0) {
         const usdVal = parseFloat(val) * tokenPrices.tokenB;
@@ -416,14 +422,18 @@ export function HomeScreen({ navigation }: any) {
     }, 500);
   };
 
-  // Show full balance, but max/validation uses rent-adjusted
-  const SOL_RENT_RESERVE = 0.003;
+  // Show full balance, but max/validation uses buffered amount
+  const SOL_RENT_RESERVE = 0.01;
+  const DEPOSIT_BUFFER = 0.02; // 2% buffer so wallet simulation always shows less than UI balance
   const displayBalanceA = tokenBalances[tokenA.symbol];
   const displayBalanceB = tokenBalances[tokenB.symbol];
-  const maxBalanceA = displayBalanceA !== undefined && tokenA.symbol === 'SOL'
-    ? Math.max(0, displayBalanceA - SOL_RENT_RESERVE) : displayBalanceA;
-  const maxBalanceB = displayBalanceB !== undefined && tokenB.symbol === 'SOL'
-    ? Math.max(0, displayBalanceB - SOL_RENT_RESERVE) : displayBalanceB;
+  const applyBuffer = (bal: number, symbol: string) => {
+    let reserved = bal * DEPOSIT_BUFFER;
+    if (symbol === 'SOL') reserved = Math.max(reserved, SOL_RENT_RESERVE);
+    return Math.max(0, bal - reserved);
+  };
+  const maxBalanceA = displayBalanceA !== undefined ? applyBuffer(displayBalanceA, tokenA.symbol) : displayBalanceA;
+  const maxBalanceB = displayBalanceB !== undefined ? applyBuffer(displayBalanceB, tokenB.symbol) : displayBalanceB;
 
   const handleMaxA = () => {
     if (maxBalanceA !== undefined) {
@@ -462,6 +472,7 @@ export function HomeScreen({ navigation }: any) {
 
   const alternativePools = pools
     .filter(p => selectedPool ? p.id !== selectedPool.id : true)
+    .sort((a, b) => b.tvl - a.tvl)
     .slice(0, 5);
 
   const toggleDropdownA = () => {
@@ -475,8 +486,9 @@ export function HomeScreen({ navigation }: any) {
 
   const parsedA = amountA ? parseFloat(amountA) : 0;
   const parsedB = amountB ? parseFloat(amountB) : 0;
-  const insufficientA = displayBalanceA !== undefined && parsedA > displayBalanceA;
-  const insufficientB = displayBalanceB !== undefined && parsedB > displayBalanceB;
+  const EPSILON = 0.0001;
+  const insufficientA = displayBalanceA !== undefined && parsedA > displayBalanceA + EPSILON;
+  const insufficientB = displayBalanceB !== undefined && parsedB > displayBalanceB + EPSILON;
   const insufficientBalance = (insufficientA || insufficientB) && parsedA > 0 && parsedB > 0;
 
   const depositDisabled = !connected || !selectedPool || !amountA || !amountB
@@ -503,6 +515,7 @@ export function HomeScreen({ navigation }: any) {
 
   return (
     <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
+      <LinearGradient colors={['rgba(6,14,24,0.95)', 'rgba(6,14,24,0.7)', 'transparent']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: statusBarHeight + 20, zIndex: 10 }} pointerEvents="none" />
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <SharedHeader title="POSEIDON" subtitle="Find the best yields across Solana DEXs" />
 
@@ -511,10 +524,32 @@ export function HomeScreen({ navigation }: any) {
         <Card style={styles.depositCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>DEPOSIT LIQUIDITY</Text>
-            <TouchableOpacity onPress={fetchPools} activeOpacity={0.6}>
-              <Ionicons name="refresh-outline" size={18} color={loading ? colors.accent : '#5a7090'} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <TouchableOpacity onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setShowSlippage(!showSlippage); }} activeOpacity={0.6}>
+                <Ionicons name="settings-outline" size={18} color={showSlippage ? colors.accent : '#5a7090'} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setTokenBalances({}); fetchPools(); }} activeOpacity={0.6}>
+                <Ionicons name="refresh-outline" size={18} color={loading ? colors.accent : '#5a7090'} />
             </TouchableOpacity>
+            </View>
           </View>
+
+          {showSlippage && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <Text style={{ color: '#5a7090', fontSize: 12 }}>Slippage:</Text>
+              {[50, 100, 200].map(bps => (
+                <TouchableOpacity key={bps} onPress={() => setSlippageBps(bps)}
+                  style={{
+                    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6,
+                    backgroundColor: slippageBps === bps ? 'rgba(126,200,232,0.15)' : '#1a3050',
+                    borderWidth: 1,
+                    borderColor: slippageBps === bps ? 'rgba(126,200,232,0.3)' : 'transparent',
+                  }}>
+                  <Text style={{ color: slippageBps === bps ? '#7ec8e8' : '#5a7090', fontSize: 12, fontWeight: slippageBps === bps ? '600' : '400' }}>{bps / 100}%</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           <TokenSelector
             selectedToken={tokenA} onSelect={setTokenA} excludeToken={tokenB}
@@ -591,7 +626,24 @@ export function HomeScreen({ navigation }: any) {
               />
             </View>
             {autoRebalance && (
-              <Text style={styles.toggleInfo}>Agent monitors 24/7 and rebalances when price moves out of range.</Text>
+              <View>
+                <Text style={styles.toggleInfo}>Agent monitors 24/7 and rebalances when price moves out of range. 5% fee on earned fees.</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                  <Text style={{ color: '#5a7090', fontSize: 12 }}>Target 24h Yield:</Text>
+                  {['0.10', '0.25', '0.50'].map(opt => (
+                    <TouchableOpacity key={opt}
+                      onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setTargetYield(opt); }}
+                      style={{
+                        paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6,
+                        backgroundColor: targetYield === opt ? 'rgba(126,200,232,0.15)' : '#1a3050',
+                        borderWidth: 1,
+                        borderColor: targetYield === opt ? 'rgba(126,200,232,0.3)' : 'transparent',
+                      }}>
+                      <Text style={{ color: targetYield === opt ? '#7ec8e8' : '#5a7090', fontSize: 12, fontWeight: targetYield === opt ? '600' : '400' }}>{opt}%</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             )}
 
             <View style={[styles.toggleRow, { marginTop: 12 }]}>
@@ -616,21 +668,13 @@ export function HomeScreen({ navigation }: any) {
           {parsedA > 0 && connected && selectedPool && (
             <View style={styles.feeSection}>
               <View style={styles.feeRow}>
-                <Text style={styles.feeLabel}>Network fee</Text>
+                <Text style={styles.feeLabel}>Poseidon Fee</Text>
+                <Text style={styles.feeValue}>0.1%</Text>
+              </View>
+              <View style={styles.feeRow}>
+                <Text style={styles.feeLabel}>Network</Text>
                 <Text style={styles.feeValue}>~0.00025 SOL</Text>
               </View>
-              {privacy && (
-                <View style={styles.feeRow}>
-                  <Text style={styles.feeLabel}>Privacy fee</Text>
-                  <Text style={styles.feeValue}>{(parsedA * tokenPrices.tokenA * 0.001).toFixed(4)} USD</Text>
-                </View>
-              )}
-              {autoRebalance && (
-                <View style={styles.feeRow}>
-                  <Text style={styles.feeLabel}>Rebalance fee</Text>
-                  <Text style={styles.feeValue}>5% of earned fees</Text>
-                </View>
-              )}
             </View>
           )}
 
