@@ -103,10 +103,12 @@ export default function PositionCard({
               {pos.pnl} ({pos.pnlPct})
             </p>
           </div>
+          {/* TODO: Re-enable when yield estimates are verified accurate
           <div>
             <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">Est. 24h Yield</p>
             <p className="text-sm font-mono text-[#7ec8e8]">{pos.apy}</p>
           </div>
+          */}
         </div>
       </button>
 
