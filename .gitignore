@@ -11,3 +11,4 @@ wallet.json
 
 target/
 programs/*/target/
+.vercel
