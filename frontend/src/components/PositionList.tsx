@@ -9,9 +9,11 @@ interface PositionListProps {
   loading?: boolean;
   emptyMessage?: string;
   perPage?: number;
+  onClosePosition?: (id: string) => void;
+  closingId?: string | null;
 }
 
-export default function PositionList({ positions, loading, emptyMessage = "No positions yet.", perPage = 3 }: PositionListProps) {
+export default function PositionList({ positions, loading, emptyMessage = "No positions yet.", perPage = 3, onClosePosition, closingId }: PositionListProps) {
   const [expandedPosition, setExpandedPosition] = useState<string | null>(null);
   const [posPage, setPosPage] = useState(0);
   const [sortBy, setSortBy] = useState<"pnl" | "apy" | "value">("value");
@@ -82,6 +84,8 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
             position={pos}
             expanded={expandedPosition === pos.id}
             onToggle={() => setExpandedPosition(expandedPosition === pos.id ? null : pos.id)}
+            onClose={onClosePosition}
+            closing={closingId === pos.id}
           />
         ))}
       </div>

@@ -565,7 +565,7 @@ export default function DepositCard() {
                 )}
                 {txSignature && (
                   <a
-                    href={`https://xray.helius.xyz/tx/${txSignature}`}
+                    href={`https://orbmarkets.io/tx/${txSignature}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-[#7ec8e8] hover:underline"
@@ -605,3 +605,4 @@ export default function DepositCard() {
     </div>
   );
 }
+

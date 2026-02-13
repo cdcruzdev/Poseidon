@@ -1,18 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useConnection } from "@solana/wallet-adapter-react";
 import { usePositions } from "@/hooks/usePositions";
 import PositionList from "@/components/PositionList";
 
 export default function MyPositions() {
-  const { connected } = useWallet();
+  const { publicKey, connected } = useWallet();
   const { setVisible } = useWalletModal();
-  const { positions, loading } = usePositions();
+  const { positions, loading, refetch } = usePositions();
   const [mounted, setMounted] = useState(false);
+  const [closingId, setClosingId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  const handleClose = useCallback(async (txSignature: string) => {
+    // For now, redirect to the DEX's native UI to close
+    // Full close position requires SDK integration per DEX
+    const pos = positions.find(p => p.id === txSignature);
+    if (!pos) return;
+
+    const dex = pos.dex.toLowerCase();
+    let url = "";
+    if (dex === "orca") {
+      url = "https://www.orca.so/liquidity";
+    } else if (dex === "raydium") {
+      url = "https://raydium.io/clmm/pools";
+    } else if (dex === "meteora") {
+      url = "https://app.meteora.ag/dlmm";
+    }
+    
+    if (url) window.open(url, "_blank");
+  }, [positions]);
 
   if (!mounted) return <PositionList positions={[]} loading={true} />;
 
@@ -48,6 +69,8 @@ export default function MyPositions() {
         positions={positions}
         loading={loading}
         emptyMessage="No positions found. Deposit liquidity to get started."
+        onClosePosition={handleClose}
+        closingId={closingId}
       />
     </div>
   );

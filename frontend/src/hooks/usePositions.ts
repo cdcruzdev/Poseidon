@@ -37,9 +37,23 @@ export function usePositions() {
     try {
       const wallet = publicKey.toBase58();
       
-      // Fetch SOL price and transactions in parallel
+      // Fetch SOL price, pool yields, and transactions in parallel
       if (!cachedSolPrice) cachedSolPrice = await fetchSolPrice();
       const solPrice = cachedSolPrice;
+
+      // Fetch pool yields from agent API for 24h yield display
+      const yieldsByDex: Record<string, number> = {};
+      try {
+        const poolRes = await fetch("http://localhost:3001/api/pools?tokenA=SOL&tokenB=USDC&limit=10");
+        const poolJson = await poolRes.json();
+        if (poolJson.success) {
+          for (const pool of poolJson.data || []) {
+            const dex = pool.dex?.toLowerCase();
+            const y = pool.yield24h ?? ((pool.apr24h || pool.estimatedApr || 0) / 365);
+            if (dex && y > 0) yieldsByDex[dex] = y;
+          }
+        }
+      } catch {}
 
       const res = await fetch(
         `${HELIUS_API}/addresses/${wallet}/transactions?api-key=${HELIUS_KEY}&limit=50`
@@ -55,7 +69,7 @@ export function usePositions() {
         // Method 1: Helius detected OPEN_POSITION type
         if (tx.type === "OPEN_POSITION") {
           seenSigs.add(tx.signature);
-          found.push(txToPosition(tx, tx.source || "Unknown", solPrice));
+          found.push(txToPosition(tx, tx.source || "Unknown", solPrice, yieldsByDex));
           continue;
         }
 
@@ -67,7 +81,7 @@ export function usePositions() {
             const dex = DEX_PROGRAMS[ix.programId];
             if (dex) {
               seenSigs.add(tx.signature);
-              found.push(txToPosition(tx, dex, solPrice));
+              found.push(txToPosition(tx, dex, solPrice, yieldsByDex));
               break;
             }
           }
@@ -105,7 +119,7 @@ async function fetchSolPrice(): Promise<number> {
 
 let cachedSolPrice = 0;
 
-function txToPosition(tx: HeliusTx, dex: string, solPrice: number): Position {
+function txToPosition(tx: HeliusTx, dex: string, solPrice: number, yieldsByDex: Record<string, number>): Position {
   // Use TOKEN transfers only (includes wrapped SOL). Skip NFT mints.
   const wallet = tx.nativeTransfers?.[0]?.fromUserAccount || "";
   const deposits = tx.tokenTransfers?.filter(t => {
@@ -132,6 +146,11 @@ function txToPosition(tx: HeliusTx, dex: string, solPrice: number): Position {
 
   const pair = symbols.length >= 2 ? `${symbols[0]}/${symbols[1]}` : symbols.length === 1 ? `${symbols[0]}/...` : "LP Position";
 
+  // Get 24h yield for this DEX
+  const dexKey = dex.toLowerCase();
+  const yield24h = yieldsByDex[dexKey] || 0;
+  const yieldStr = yield24h > 0 ? `${yield24h.toFixed(3)}%` : "-";
+
   return {
     id: tx.signature,
     pair,
@@ -140,7 +159,7 @@ function txToPosition(tx: HeliusTx, dex: string, solPrice: number): Position {
     current: totalUsd > 0 ? `$${totalUsd.toFixed(2)}` : "-",
     pnl: "$0.00",
     pnlPct: "0.0%",
-    apy: "-",
+    apy: yieldStr,
     range: "Active",
     status: "in-range",
     rebalances: 0,

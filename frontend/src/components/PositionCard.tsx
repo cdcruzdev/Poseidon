@@ -8,9 +8,11 @@ interface PositionCardProps {
   position: Position;
   expanded: boolean;
   onToggle: () => void;
+  onClose?: (id: string) => void;
+  closing?: boolean;
 }
 
-export default function PositionCard({ position: pos, expanded, onToggle }: PositionCardProps) {
+export default function PositionCard({ position: pos, expanded, onToggle, onClose, closing }: PositionCardProps) {
   return (
     <div className="bg-[#0d1926]/80 border border-[#1a3050] rounded-xl overflow-hidden">
       <button
@@ -84,8 +86,17 @@ export default function PositionCard({ position: pos, expanded, onToggle }: Posi
             </div>
           </div>
           <div className="flex gap-2 mt-4">
+            {onClose && (
+              <button
+                onClick={() => onClose(pos.id)}
+                disabled={closing}
+                className="px-4 py-2 text-xs bg-[#1a3050] text-[#f87171] rounded-lg hover:bg-[#f87171]/10 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {closing ? "Closing..." : "Close Position"}
+              </button>
+            )}
             <a
-              href={`https://xray.helius.xyz/tx/${pos.id}`}
+              href={`https://orbmarkets.io/tx/${pos.id}`}
               target="_blank"
               rel="noopener noreferrer"
               className="px-4 py-2 text-xs bg-[#1a3050] text-[#7ec8e8] rounded-lg hover:bg-[#1a3050]/80 transition-colors cursor-pointer"
@@ -98,3 +109,4 @@ export default function PositionCard({ position: pos, expanded, onToggle }: Posi
     </div>
   );
 }
+
