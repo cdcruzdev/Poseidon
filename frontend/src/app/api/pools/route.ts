@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const HELIUS_RPC = process.env.HELIUS_RPC_URL || "https://mainnet.helius-rpc.com/?api-key=a9d759b5-f465-44ec-b753-92ab3007b641";
+const HELIUS_RPC = process.env.HELIUS_RPC_URL || "https://mainnet.helius-rpc.com";
 
 // Token mint addresses
 const MINTS: Record<string, string> = {

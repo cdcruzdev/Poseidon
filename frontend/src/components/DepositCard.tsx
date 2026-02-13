@@ -17,7 +17,7 @@ import { useRaydiumDeposit } from "@/hooks/useRaydiumDeposit";
 import StrategyPresets, { type Strategy } from "@/components/StrategyPresets";
 import AnimateHeight from "@/components/AnimateHeight";
 import { TOKENS, type Token } from "@/lib/tokens";
-import { API_BASE, getPools, type Pool } from "@/lib/api";
+import { type Pool } from "@/lib/api";
 
 function parseTxError(raw: string): string {
   const lower = raw.toLowerCase();

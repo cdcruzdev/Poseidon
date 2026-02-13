@@ -12,7 +12,7 @@ Poseidon is an LP management platform for Solana. It solves three problems:
 
 2. **Complexity** -- Setting up concentrated liquidity requires understanding tick spacing, fee tiers, and range width across different protocols. Poseidon handles all of that: pick your tokens, pick your amount, and we find the best pool and deposit in one click.
 
-3. **Visibility** -- Track all your LP positions across every DEX in one dashboard with real deposited values, current values, P&L, and estimated yields pulled directly from on-chain data and DEX APIs.
+3. **Visibility** -- Track all your LP positions across every DEX in one dashboard with current values and fee data pulled directly from on-chain data and DEX APIs.
 
 ### Auto-Rebalancing (Default On)
 
@@ -119,11 +119,11 @@ cd mobile && npm install && npx expo start
 cd programs/poseidon-native && cargo build-sbf
 ```
 
-## Mobile App
+## Mobile App (Coming Soon)
 
-React Native app with Solana Mobile Wallet Adapter (MWA) for native wallet connection. Supports the same deposit flow as web.
+React Native app with Solana Mobile Wallet Adapter (MWA) for native wallet connection. Foundational code is complete: wallet connection, position viewing, and deposit flows are built. Currently in active development and testing.
 
-Built locally with Gradle (arm64-v8a). Tested on Samsung Galaxy S25.
+Built with Expo + Gradle (arm64-v8a). Tested on Samsung Galaxy S25 with MWA wallet connection working.
 
 ## License
 
