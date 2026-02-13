@@ -50,7 +50,7 @@ export default function Home() {
               <span className="text-[#7ec8e8]">Raydium</span>
             </div>
             <div className="flex gap-6">
-              <a href="https://x.com/PoseidonLP" target="_blank" rel="noopener noreferrer" className="text-[#5a7090] hover:text-[#ffffff] transition-colors text-sm">
+              <a href="https://x.com/Poseidon_LP" target="_blank" rel="noopener noreferrer" className="text-[#5a7090] hover:text-[#ffffff] transition-colors text-sm">
                 Twitter
               </a>
               <a href="https://github.com/cdcruzdev/poseidon" target="_blank" rel="noopener noreferrer" className="text-[#5a7090] hover:text-[#ffffff] transition-colors text-sm">
