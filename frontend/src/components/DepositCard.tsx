@@ -240,8 +240,28 @@ export default function DepositCard() {
       const safeB = b.tvl >= 500_000 ? 1 : b.tvl >= 100_000 ? 0.5 : 0.1;
       return (yB * safeB) - (yA * safeA);
     });
-    const top10 = allPools.slice(0, 6);
-    setPools(top10);
+    // Ensure at least the best pool from each DEX is represented
+    const seen = new Set<string>();
+    const topPools: Pool[] = [];
+    // First pass: best from each DEX (by TVL)
+    for (const dex of ["orca", "raydium", "meteora"]) {
+      const best = allPools.find(p => p.dex === dex && !seen.has(p.address));
+      if (best) { topPools.push(best); seen.add(best.address); }
+    }
+    // Fill remaining slots from sorted list
+    for (const p of allPools) {
+      if (topPools.length >= 8) break;
+      if (!seen.has(p.address)) { topPools.push(p); seen.add(p.address); }
+    }
+    // Re-sort the final list
+    topPools.sort((a, b) => {
+      const yA = a.yield24h ?? (a.apr24h || a.estimatedApr || 0) / 365;
+      const yB = b.yield24h ?? (b.apr24h || b.estimatedApr || 0) / 365;
+      const safeA = a.tvl >= 500_000 ? 1 : a.tvl >= 100_000 ? 0.5 : 0.1;
+      const safeB = b.tvl >= 500_000 ? 1 : b.tvl >= 100_000 ? 0.5 : 0.1;
+      return (yB * safeB) - (yA * safeA);
+    });
+    setPools(topPools);
 
     if (top10.length > 0) {
       setSelectedPool(top10[0]);
