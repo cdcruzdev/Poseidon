@@ -110,25 +110,31 @@ async function fetchMeteoraPools(mintA: string, mintB: string): Promise<any[]> {
       }
     }
 
-    return allPairs.map((p: any) => ({
-      address: p.address,
-      dex: "meteora" as const,
-      tokenA: p.name?.split("-")[0]?.trim() || "?",
-      tokenB: p.name?.split("-")[1]?.trim() || "?",
-      tokenAMint: p.mint_x,
-      tokenBMint: p.mint_y,
-      tokenAPrice: 0,
-      tokenBPrice: 0,
-      feeRate: p.base_fee_percentage ? parseFloat(p.base_fee_percentage) / 100 : 0.0025,
-      feeTier: p.base_fee_percentage ? parseFloat(p.base_fee_percentage) : 0.25,
-      tvl: p.liquidity || 0,
-      volume24h: p.trade_volume_24h || 0,
-      apr24h: p.apr ? parseFloat(p.apr) : undefined,
-      yield24h: p.apr ? parseFloat(p.apr) / 365 : undefined,
-      estimatedApr: p.apr ? parseFloat(p.apr) : 0,
-      price: p.current_price || 0,
-      binStep: p.bin_step,
-    }));
+    return allPairs.map((p: any) => {
+      const tvl = Number(p.liquidity) || 0;
+      const volume24h = Number(p.trade_volume_24h) || 0;
+      const apr = Number(p.apr) || 0;
+      const feePercent = Number(p.base_fee_percentage) || 0;
+      return {
+        address: p.address,
+        dex: "meteora" as const,
+        tokenA: p.name?.split("-")[0]?.trim() || "?",
+        tokenB: p.name?.split("-")[1]?.trim() || "?",
+        tokenAMint: p.mint_x,
+        tokenBMint: p.mint_y,
+        tokenAPrice: 0,
+        tokenBPrice: 0,
+        feeRate: feePercent > 0 ? feePercent / 100 : 0.0025,
+        feeTier: feePercent > 0 ? feePercent : 0.25,
+        tvl,
+        volume24h,
+        apr24h: apr > 0 ? apr : undefined,
+        yield24h: apr > 0 ? apr / 365 : undefined,
+        estimatedApr: apr,
+        price: Number(p.current_price) || 0,
+        binStep: p.bin_step,
+      };
+    });
   } catch {
     return [];
   }

@@ -24,6 +24,7 @@ export interface Pool {
   tvl: number;
   volume24h: number;
   feeRate: number;
+  feeTier?: number;
   currentPrice: number;
   apr24h: number;
   yield24h?: number; // actual 24h yield (apr24h / 365)

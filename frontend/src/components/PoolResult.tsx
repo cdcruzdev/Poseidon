@@ -88,7 +88,7 @@ export default function PoolResult({
   const dexColor = dexColors[pool.dex] || "#5eead4";
   const yield24h = pool.yield24h ?? (pool.apr24h || pool.estimatedApr || 0) / 365;
   const poolTypeLabel = pool.poolType || (pool.dex === 'meteora' ? 'DLMM' : pool.dex === 'orca' ? 'Whirlpool' : pool.dex === 'raydium' ? 'CLMM' : 'CL');
-  const safeFeeRate = pool.feeRate || pool.feeTier ? (pool.feeTier || 0) / 100 : 0;
+  const safeFeeRate = pool.feeRate > 0 ? pool.feeRate : (pool.feeTier ? pool.feeTier / 100 : 0);
   const tvlFormatted = pool.tvl >= 1_000_000
     ? `$${(pool.tvl / 1_000_000).toFixed(1)}M`
     : `$${(pool.tvl / 1_000).toFixed(0)}K`;
