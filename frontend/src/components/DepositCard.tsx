@@ -471,7 +471,11 @@ export default function DepositCard() {
           {canDeposit && (
             <div className="border-t border-[#1a3050] pt-3 space-y-1">
               <div className="flex justify-between text-sm">
-                <span className="text-[#5a7090]">Fees</span>
+                <span className="text-[#5a7090]">Poseidon Fee</span>
+                <span className="text-[#8899aa]">0.1%</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#5a7090]">Network</span>
                 <span className="text-[#8899aa]">~0.00025 SOL</span>
               </div>
             </div>
