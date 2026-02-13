@@ -28,40 +28,20 @@ const STABLES = new Set([
 const RAYDIUM_CLMM = new PublicKey("CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK");
 const POSEIDON_PROGRAM = new PublicKey("HLsgAVzjjBaBR9QCLqV3vjC9LTnR2xtmtB77j1EJQBsZ");
 
-// Fetch per-position rebalance configs. Returns a Set of position mint pubkeys that have rebalance enabled.
-async function fetchRebalanceConfigs(wallet: PublicKey, positionMints: PublicKey[]): Promise<Set<string>> {
-  const enabled = new Set<string>();
-  if (positionMints.length === 0) return enabled;
-
+// Fetch wallet-level rebalance config (current on-chain program uses ["rebalance", owner] seeds)
+async function fetchRebalanceEnabled(wallet: PublicKey): Promise<boolean> {
   try {
-    // Derive all config PDAs
-    const pdas = positionMints.map(mint => ({
-      mint,
-      pda: PublicKey.findProgramAddressSync(
-        [Buffer.from("rebalance"), wallet.toBuffer(), mint.toBuffer()],
-        POSEIDON_PROGRAM,
-      )[0],
-    }));
-
-    // Batch fetch
-    const batchSize = 100;
-    const allInfos: (any | null)[] = [];
-    for (let i = 0; i < pdas.length; i += batchSize) {
-      const chunk = pdas.slice(i, i + batchSize).map(p => p.pda);
-      const infos = await connection.getMultipleAccountsInfo(chunk);
-      allInfos.push(...infos);
-    }
-
-    // Parse: disc(8) + owner(32) + position_mint(32) + enabled(1)
-    for (let i = 0; i < pdas.length; i++) {
-      const info = allInfos[i];
-      if (info && info.data.length >= 73 && info.data[72] === 1) {
-        enabled.add(pdas[i].mint.toBase58());
-      }
-    }
-  } catch {}
-
-  return enabled;
+    const [configPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("rebalance"), wallet.toBuffer()],
+      POSEIDON_PROGRAM,
+    );
+    const info = await connection.getAccountInfo(configPda);
+    if (!info || info.data.length < 41) return false;
+    // Current layout: disc(8) + owner(32) + enabled(1)
+    return info.data[40] === 1;
+  } catch {
+    return false;
+  }
 }
 const METEORA_DLMM = new PublicKey("LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo");
 
@@ -544,18 +524,10 @@ async function fetchAllPositions(wallet: PublicKey, solPrice: number): Promise<P
     console.warn("Failed to fetch Meteora positions:", err);
   }
 
-  // Fetch per-position rebalance configs from on-chain
-  const positionMints = positions
-    .filter(p => p.positionMint)
-    .map(p => new PublicKey(p.positionMint!));
-  
-  if (positionMints.length > 0) {
-    const rebalanceSet = await fetchRebalanceConfigs(wallet, positionMints);
-    for (const pos of positions) {
-      if (pos.positionMint) {
-        pos.autoRebalance = rebalanceSet.has(pos.positionMint);
-      }
-    }
+  // Fetch wallet-level rebalance config from on-chain
+  const rebalanceEnabled = await fetchRebalanceEnabled(wallet);
+  for (const pos of positions) {
+    pos.autoRebalance = rebalanceEnabled;
   }
 
   return positions;

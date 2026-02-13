@@ -23,14 +23,14 @@ export function useRebalanceToggle() {
   const [toggling, setToggling] = useState<string | null>(null);
 
   const toggle = useCallback(
-    async (positionMint: string, currentlyEnabled: boolean): Promise<boolean> => {
+    async (_positionMint: string, currentlyEnabled: boolean): Promise<boolean> => {
       if (!publicKey || !signTransaction) return currentlyEnabled;
 
-      setToggling(positionMint);
+      setToggling("wallet");
       try {
-        const mintPubkey = new PublicKey(positionMint);
+        // Current on-chain program: wallet-level PDA ["rebalance", owner]
         const [configPda] = PublicKey.findProgramAddressSync(
-          [Buffer.from("rebalance"), publicKey.toBuffer(), mintPubkey.toBuffer()],
+          [Buffer.from("rebalance"), publicKey.toBuffer()],
           POSEIDON_PROGRAM,
         );
 
@@ -38,15 +38,14 @@ export function useRebalanceToggle() {
         let keys: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean }[];
 
         if (currentlyEnabled) {
-          // disable_rebalance: accounts = [owner, config_pda, position_mint]
+          // disable_rebalance: accounts = [owner, config_pda]
           data = DISABLE_DISC;
           keys = [
             { pubkey: publicKey, isSigner: true, isWritable: true },
             { pubkey: configPda, isSigner: false, isWritable: true },
-            { pubkey: mintPubkey, isSigner: false, isWritable: false },
           ];
         } else {
-          // enable_rebalance: accounts = [owner, config_pda, position_mint, system_program]
+          // enable_rebalance: accounts = [owner, config_pda, system_program]
           const args = Buffer.alloc(4);
           args.writeUInt16LE(100, 0); // 1% max slippage
           args.writeUInt16LE(50, 2);  // 0.5% min yield improvement
@@ -54,7 +53,6 @@ export function useRebalanceToggle() {
           keys = [
             { pubkey: publicKey, isSigner: true, isWritable: true },
             { pubkey: configPda, isSigner: false, isWritable: true },
-            { pubkey: mintPubkey, isSigner: false, isWritable: false },
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
           ];
         }
