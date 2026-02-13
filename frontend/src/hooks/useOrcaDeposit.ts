@@ -200,41 +200,28 @@ export function useOrcaDeposit() {
         }
 
         const openBuilt = await openTxBuilder.build();
-        allSignerSets.push({ tx: openBuilt.transaction as Transaction, signers: openBuilt.signers });
+        const openTx = openBuilt.transaction as Transaction;
 
-        // Build 0.1% Poseidon fee transaction
-        const feeTx = new Transaction();
+        // Inject 0.1% Poseidon fee instructions INTO the deposit tx (atomic)
         const feeAmountA = new BN(tokenAmountABN.muln(FEE_BPS).divn(10000).toString());
         const feeAmountB = new BN(tokenAmountBBN.muln(FEE_BPS).divn(10000).toString());
-
-        // Fee for token A
         const mintA = isReversed ? new PublicKey(tokenBMint) : new PublicKey(tokenAMint);
         const mintB = isReversed ? new PublicKey(tokenAMint) : new PublicKey(tokenBMint);
-        if (mintA.toBase58() === SOL_MINT && feeAmountA.gtn(0)) {
-          feeTx.add(SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: POSEIDON_TREASURY, lamports: feeAmountA.toNumber() }));
-        } else if (feeAmountA.gtn(0)) {
-          const userAtaA = await getAssociatedTokenAddress(mintA, wallet.publicKey);
-          const treasuryAtaA = await getAssociatedTokenAddress(mintA, POSEIDON_TREASURY);
-          try { await connection.getAccountInfo(treasuryAtaA).then(a => { if (!a) throw 0; }); } catch {
-            feeTx.add(createAssociatedTokenAccountInstruction(wallet.publicKey, treasuryAtaA, POSEIDON_TREASURY, mintA));
+
+        for (const [mint, feeAmt] of [[mintA, feeAmountA], [mintB, feeAmountB]] as [PublicKey, BN][]) {
+          if (feeAmt.lten(0)) continue;
+          if (mint.toBase58() === SOL_MINT) {
+            openTx.add(SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: POSEIDON_TREASURY, lamports: feeAmt.toNumber() }));
+          } else {
+            const userAta = await getAssociatedTokenAddress(mint, wallet.publicKey);
+            const treasuryAta = await getAssociatedTokenAddress(mint, POSEIDON_TREASURY);
+            const acct = await connection.getAccountInfo(treasuryAta);
+            if (!acct) openTx.add(createAssociatedTokenAccountInstruction(wallet.publicKey, treasuryAta, POSEIDON_TREASURY, mint));
+            openTx.add(createTransferInstruction(userAta, treasuryAta, wallet.publicKey, BigInt(feeAmt.toString())));
           }
-          feeTx.add(createTransferInstruction(userAtaA, treasuryAtaA, wallet.publicKey, BigInt(feeAmountA.toString())));
-        }
-        // Fee for token B
-        if (mintB.toBase58() === SOL_MINT && feeAmountB.gtn(0)) {
-          feeTx.add(SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: POSEIDON_TREASURY, lamports: feeAmountB.toNumber() }));
-        } else if (feeAmountB.gtn(0)) {
-          const userAtaB = await getAssociatedTokenAddress(mintB, wallet.publicKey);
-          const treasuryAtaB = await getAssociatedTokenAddress(mintB, POSEIDON_TREASURY);
-          try { await connection.getAccountInfo(treasuryAtaB).then(a => { if (!a) throw 0; }); } catch {
-            feeTx.add(createAssociatedTokenAccountInstruction(wallet.publicKey, treasuryAtaB, POSEIDON_TREASURY, mintB));
-          }
-          feeTx.add(createTransferInstruction(userAtaB, treasuryAtaB, wallet.publicKey, BigInt(feeAmountB.toString())));
         }
 
-        if (feeTx.instructions.length > 0) {
-          allSignerSets.unshift({ tx: feeTx, signers: [] });
-        }
+        allSignerSets.push({ tx: openTx, signers: openBuilt.signers });
 
         // Set recent blockhash and fee payer, then partial-sign with any keypair signers
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();

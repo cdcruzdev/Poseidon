@@ -179,39 +179,42 @@ export function useRaydiumDeposit() {
           txVersion: 0 as any,
         });
 
-        // 6b. Send 0.1% Poseidon fee before the deposit
+        // 7. Execute deposit transaction
+        const { txId } = await execute({ sendAndConfirm: true });
+
+        // 7b. Send 0.1% Poseidon fee AFTER successful deposit (can't inject into SDK tx)
         if (publicKey && signAllTransactions) {
-          const feeTx = new Transaction();
-          const feeA = amountABN.muln(FEE_BPS).divn(10000);
-          const feeB = amountBBN.muln(FEE_BPS).divn(10000);
-          const mintA = new PublicKey(isReversed ? tokenBMint : tokenAMint);
-          const mintB = new PublicKey(isReversed ? tokenAMint : tokenBMint);
+          try {
+            const feeTx = new Transaction();
+            const feeA = amountABN.muln(FEE_BPS).divn(10000);
+            const feeB = amountBBN.muln(FEE_BPS).divn(10000);
+            const mintA = new PublicKey(isReversed ? tokenBMint : tokenAMint);
+            const mintB = new PublicKey(isReversed ? tokenAMint : tokenBMint);
 
-          for (const [mint, feeAmt] of [[mintA, feeA], [mintB, feeB]] as [PublicKey, BN][]) {
-            if (feeAmt.lten(0)) continue;
-            if (mint.toBase58() === SOL_MINT) {
-              feeTx.add(SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: POSEIDON_TREASURY, lamports: feeAmt.toNumber() }));
-            } else {
-              const userAta = await getAssociatedTokenAddress(mint, publicKey);
-              const treasuryAta = await getAssociatedTokenAddress(mint, POSEIDON_TREASURY);
-              const acct = await connection.getAccountInfo(treasuryAta);
-              if (!acct) feeTx.add(createAssociatedTokenAccountInstruction(publicKey, treasuryAta, POSEIDON_TREASURY, mint));
-              feeTx.add(createTransferInstruction(userAta, treasuryAta, publicKey, BigInt(feeAmt.toString())));
+            for (const [mint, feeAmt] of [[mintA, feeA], [mintB, feeB]] as [PublicKey, BN][]) {
+              if (feeAmt.lten(0)) continue;
+              if (mint.toBase58() === SOL_MINT) {
+                feeTx.add(SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: POSEIDON_TREASURY, lamports: feeAmt.toNumber() }));
+              } else {
+                const userAta = await getAssociatedTokenAddress(mint, publicKey);
+                const treasuryAta = await getAssociatedTokenAddress(mint, POSEIDON_TREASURY);
+                const acct = await connection.getAccountInfo(treasuryAta);
+                if (!acct) feeTx.add(createAssociatedTokenAccountInstruction(publicKey, treasuryAta, POSEIDON_TREASURY, mint));
+                feeTx.add(createTransferInstruction(userAta, treasuryAta, publicKey, BigInt(feeAmt.toString())));
+              }
             }
-          }
 
-          if (feeTx.instructions.length > 0) {
-            const { blockhash } = await connection.getLatestBlockhash();
-            feeTx.recentBlockhash = blockhash;
-            feeTx.feePayer = publicKey;
-            const [signedFee] = await signAllTransactions([feeTx]);
-            const feeSig = await connection.sendRawTransaction(signedFee.serialize());
-            await connection.confirmTransaction(feeSig, "confirmed");
+            if (feeTx.instructions.length > 0) {
+              const { blockhash } = await connection.getLatestBlockhash();
+              feeTx.recentBlockhash = blockhash;
+              feeTx.feePayer = publicKey;
+              const [signedFee] = await signAllTransactions([feeTx]);
+              await connection.sendRawTransaction(signedFee.serialize());
+            }
+          } catch {
+            // Fee collection failed but deposit succeeded — don't throw
           }
         }
-
-        // 7. Execute transaction
-        const { txId } = await execute({ sendAndConfirm: true });
 
         const result: DepositResult = {
           signature: txId,
