@@ -87,7 +87,8 @@ export default function PoolResult({
 
   const dexColor = dexColors[pool.dex] || "#5eead4";
   const yield24h = pool.yield24h ?? (pool.apr24h || pool.estimatedApr || 0) / 365;
-  const poolTypeLabel = pool.poolType || 'DLMM';
+  const poolTypeLabel = pool.poolType || (pool.dex === 'meteora' ? 'DLMM' : pool.dex === 'orca' ? 'Whirlpool' : pool.dex === 'raydium' ? 'CLMM' : 'CL');
+  const safeFeeRate = pool.feeRate || pool.feeTier ? (pool.feeTier || 0) / 100 : 0;
   const tvlFormatted = pool.tvl >= 1_000_000
     ? `$${(pool.tvl / 1_000_000).toFixed(1)}M`
     : `$${(pool.tvl / 1_000).toFixed(0)}K`;
@@ -182,22 +183,16 @@ export default function PoolResult({
             <span className="inline-flex items-center h-6 text-xs px-2 rounded-md bg-[#1a3050] text-[#7ec8e8] border border-[#1a3050] font-medium">
               {poolTypeLabel}
             </span>
-            <RiskBadge pool={pool} size="sm" showTooltip={false} />
           </div>
           <div className="text-sm text-[#5a7090] mt-1">
-            Fee: {(pool.feeRate * 100).toFixed(2)}% | TVL: {tvlFormatted}
+            Fee: {(safeFeeRate * 100).toFixed(2)}% | TVL: {tvlFormatted}
           </div>
         </div>
 
-        {/* APR with Sparkline */}
+        {/* Yield */}
         <div className="text-right flex flex-col items-end gap-1">
           <div className="text-xl font-bold text-[#7ec8e8]">{yield24h.toFixed(3)}%</div>
-          <div className="flex items-center gap-2">
-            {showSparkline && aprHistory.length > 0 && (
-              <APRSparkline data={aprHistory} width={60} height={20} showTrend={false} />
-            )}
-            <span className="text-xs text-[#5a7090]">24h Yield</span>
-          </div>
+          <span className="text-xs text-[#5a7090]">24h Yield</span>
         </div>
       </div>
     </div>
