@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
 import { StatusDot } from '../components/StatusDot';
+import { SharedHeader } from '../components/SharedHeader';
 import { ConnectWalletButton } from '../components/ConnectWalletButton';
 import { useWallet } from '../contexts/WalletContext';
 
@@ -41,7 +42,7 @@ export function PositionsScreen({ navigation }: any) {
     return (
       <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
         <View style={styles.emptyContainer}>
-          <Text style={styles.logo}>POSEIDON</Text>
+          <SharedHeader title="POSITIONS" subtitle="Your active LP positions across DEXs" />
           <View style={styles.emptyContent}>
             <Ionicons name="wallet-outline" size={48} color={colors.text.faint} />
             <Text style={styles.emptyTitle}>Connect Your Wallet</Text>
@@ -56,11 +57,7 @@ export function PositionsScreen({ navigation }: any) {
   return (
     <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.logo}>POSITIONS</Text>
-          <ConnectWalletButton />
-        </View>
+        <SharedHeader title="POSITIONS" subtitle="Your active LP positions across DEXs" />
 
         {positions.length === 0 ? (
           <View style={styles.emptyContent}>
@@ -158,12 +155,10 @@ export function PositionsScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   bg: { flex: 1 },
-  container: { flex: 1, paddingTop: 60, paddingHorizontal: 20 },
-  emptyContainer: { flex: 1, paddingTop: 60, paddingHorizontal: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  logo: { fontSize: 18, fontWeight: '900', color: colors.accent, letterSpacing: 2 },
+  container: { flex: 1 },
+  emptyContainer: { flex: 1 },
 
-  emptyContent: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, paddingBottom: 100 },
+  emptyContent: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, paddingBottom: 100, paddingHorizontal: 20 },
   emptyTitle: { color: colors.text.primary, fontSize: 20, fontWeight: '700' },
   emptySubtitle: { color: colors.text.muted, fontSize: 14, textAlign: 'center', maxWidth: 260 },
 

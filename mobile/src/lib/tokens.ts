@@ -1,66 +1,67 @@
-export interface TokenInfo {
+/**
+ * Token definitions - matching web app exactly
+ */
+
+export interface Token {
   symbol: string;
   name: string;
   mint: string;
   decimals: number;
-  coingeckoId: string;
-  logoUrl: string;
+  logo: string;
+  coingeckoId?: string;
 }
 
-export const TOKENS: TokenInfo[] = [
+export const TOKENS: Token[] = [
   {
-    symbol: 'SOL',
-    name: 'Solana',
-    mint: 'So11111111111111111111111111111111111111112',
+    symbol: "SOL",
+    name: "Solana",
+    mint: "So11111111111111111111111111111111111111112",
     decimals: 9,
-    coingeckoId: 'solana',
-    logoUrl: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
+    logo: "https://assets.coingecko.com/coins/images/4128/standard/solana.png",
+    coingeckoId: "solana",
   },
   {
-    symbol: 'USDC',
-    name: 'USD Coin',
-    mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    symbol: "USDC",
+    name: "USD Coin",
+    mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     decimals: 6,
-    coingeckoId: 'usd-coin',
-    logoUrl: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png',
+    logo: "https://assets.coingecko.com/coins/images/6319/standard/usdc.png",
+    coingeckoId: "usd-coin",
   },
   {
-    symbol: 'USDT',
-    name: 'Tether',
-    mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+    symbol: "USDT",
+    name: "Tether USD",
+    mint: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
     decimals: 6,
-    coingeckoId: 'tether',
-    logoUrl: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.png',
+    logo: "https://assets.coingecko.com/coins/images/325/standard/Tether.png",
+    coingeckoId: "tether",
   },
   {
-    symbol: 'JUP',
-    name: 'Jupiter',
-    mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+    symbol: "JUP",
+    name: "Jupiter",
+    mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
     decimals: 6,
-    coingeckoId: 'jupiter-exchange-solana',
-    logoUrl: 'https://static.jup.ag/jup/icon.png',
+    logo: "https://assets.coingecko.com/coins/images/34188/standard/jup.png",
+    coingeckoId: "jupiter-exchange-solana",
   },
   {
-    symbol: 'BONK',
-    name: 'Bonk',
-    mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+    symbol: "BONK",
+    name: "Bonk",
+    mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
     decimals: 5,
-    coingeckoId: 'bonk',
-    logoUrl: 'https://arweave.net/hQiPZOsRZXGXBJd_82PhVdlM_hACsT_q6wqwf5cSY7I',
+    logo: "https://assets.coingecko.com/coins/images/28600/standard/bonk.jpg",
+    coingeckoId: "bonk",
   },
   {
-    symbol: 'WIF',
-    name: 'dogwifhat',
-    mint: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
+    symbol: "WIF",
+    name: "dogwifhat",
+    mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
     decimals: 6,
-    coingeckoId: 'dogwifcoin',
-    logoUrl: 'https://bafkreibk3covs5ltyqxa272uodhber7flse52gqsv6aho4turjax3cs6oe.ipfs.nftstorage.link',
+    logo: "https://assets.coingecko.com/coins/images/33566/standard/dogwifhat.jpg",
+    coingeckoId: "dogwifcoin",
   },
 ];
 
-export const TOKEN_BY_SYMBOL: Record<string, TokenInfo> = {};
-export const TOKEN_BY_MINT: Record<string, TokenInfo> = {};
-for (const t of TOKENS) {
-  TOKEN_BY_SYMBOL[t.symbol] = t;
-  TOKEN_BY_MINT[t.mint] = t;
+export function getTokenBySymbol(symbol: string): Token | undefined {
+  return TOKENS.find((t) => t.symbol.toLowerCase() === symbol.toLowerCase());
 }

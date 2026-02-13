@@ -1,21 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ImageBackground, TextInput, ActivityIndicator,
+  ImageBackground, TextInput, ActivityIndicator, Image,
+  LayoutAnimation, Platform, UIManager, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
-import { ConnectWalletButton } from '../components/ConnectWalletButton';
+import { SharedHeader } from '../components/SharedHeader';
 import { useWallet } from '../contexts/WalletContext';
 import { api, Pool } from '../api/client';
+import { TOKENS, Token } from '../lib/tokens';
 
-const POPULAR_PAIRS = [
-  { tokenA: 'SOL', tokenB: 'USDC' },
-  { tokenA: 'SOL', tokenB: 'USDT' },
-  { tokenA: 'JUP', tokenB: 'SOL' },
-  { tokenA: 'BONK', tokenB: 'SOL' },
-];
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const COINGECKO_IDS: Record<string, string> = {
+  SOL: 'solana', USDC: 'usd-coin', USDT: 'tether',
+  JUP: 'jupiter-exchange-solana', BONK: 'bonk', WIF: 'dogwifcoin',
+};
+
+// Sanitize amount input: only digits and one decimal point
+function sanitizeAmount(val: string): string {
+  // Remove everything except digits and dots
+  let clean = val.replace(/[^0-9.]/g, '');
+  // Only allow one decimal point
+  const parts = clean.split('.');
+  if (parts.length > 2) clean = parts[0] + '.' + parts.slice(1).join('');
+  return clean;
+}
 
 function formatNum(n: number): string {
   if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
@@ -23,203 +37,584 @@ function formatNum(n: number): string {
   return `$${n.toFixed(0)}`;
 }
 
-export function HomeScreen({ navigation }: any) {
-  const { connected } = useWallet();
-  const [tokenA, setTokenA] = useState('SOL');
-  const [tokenB, setTokenB] = useState('USDC');
-  const [amount, setAmount] = useState('');
-  const [pools, setPools] = useState<Pool[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const [autoRebalance, setAutoRebalance] = useState(true);
-  const [privacy, setPrivacy] = useState(false);
+// ---------- Token Selector ----------
+function TokenSelector({
+  selectedToken, onSelect, excludeToken, label, amount, onAmountChange,
+  usdPrice = 0, balance, onMaxPress, isOpen, onToggleOpen, tokenBalances,
+}: {
+  selectedToken: Token | null;
+  onSelect: (token: Token) => void;
+  excludeToken?: Token | null;
+  label: string;
+  amount: string;
+  onAmountChange: (val: string) => void;
+  usdPrice?: number;
+  balance?: number;
+  onMaxPress?: () => void;
+  isOpen: boolean;
+  onToggleOpen: () => void;
+  tokenBalances?: Record<string, number>;
+}) {
+  const [search, setSearch] = useState('');
+  const balances = tokenBalances || {};
 
-  const fetchPools = async () => {
+  // Sort: tokens with balance first
+  const filteredTokens = TOKENS.filter(t => {
+    if (excludeToken && t.symbol === excludeToken.symbol) return false;
+    if (!search) return true;
+    return t.symbol.toLowerCase().includes(search.toLowerCase()) ||
+           t.name.toLowerCase().includes(search.toLowerCase());
+  }).sort((a, b) => {
+    const balA = balances[a.symbol] || 0;
+    const balB = balances[b.symbol] || 0;
+    if (balA > 0 && balB <= 0) return -1;
+    if (balB > 0 && balA <= 0) return 1;
+    return 0;
+  });
+
+  const handleSelect = (token: Token) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    onSelect(token);
+    onToggleOpen();
+    setSearch('');
+  };
+
+  const usdValue = amount && parseFloat(amount) > 0 && usdPrice > 0
+    ? (parseFloat(amount) * usdPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : null;
+
+  return (
+    <View style={tss.container}>
+      <View style={tss.labelRow}>
+        <Text style={tss.label}>{label}</Text>
+        {balance !== undefined && (
+          <Text style={tss.balanceText}>
+            Balance: <Text style={{ color: '#fff' }}>{balance < 0.0001 ? '<0.0001' : balance.toFixed(4)}</Text>
+          </Text>
+        )}
+      </View>
+
+      <View style={tss.row}>
+        <TouchableOpacity style={tss.tokenBtn} onPress={onToggleOpen} activeOpacity={0.7}>
+          {selectedToken ? (
+            <Image source={{ uri: selectedToken.logo }} style={tss.tokenLogo} />
+          ) : null}
+          <Text style={tss.tokenSymbol}>{selectedToken?.symbol || 'Select'}</Text>
+          <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={12} color="#5a7090" />
+        </TouchableOpacity>
+
+        <TextInput
+          style={tss.amountInput}
+          value={amount}
+          onChangeText={(v) => onAmountChange(sanitizeAmount(v))}
+          placeholder="0.00"
+          placeholderTextColor="#5a7090"
+          keyboardType="decimal-pad"
+          textAlign="right"
+        />
+
+        {balance !== undefined && balance > 0 && (
+          <TouchableOpacity style={tss.maxBtn} onPress={onMaxPress} activeOpacity={0.7}>
+            <Text style={tss.maxText}>MAX</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {usdValue && <Text style={tss.usdValue}>~ ${usdValue}</Text>}
+
+      {isOpen && (
+        <View style={tss.dropdown}>
+          <TextInput
+            style={tss.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search tokens..."
+            placeholderTextColor="#5a7090"
+          />
+          {filteredTokens.map(token => {
+            const bal = balances[token.symbol];
+            return (
+              <TouchableOpacity
+                key={token.symbol}
+                style={tss.dropdownItem}
+                onPress={() => handleSelect(token)}
+                activeOpacity={0.7}
+              >
+                <Image source={{ uri: token.logo }} style={tss.dropdownLogo} />
+                <View style={{ flex: 1 }}>
+                  <Text style={tss.dropdownSymbol}>{token.symbol}</Text>
+                  <Text style={tss.dropdownName}>{token.name}</Text>
+                </View>
+                {bal !== undefined && bal > 0 && (
+                  <Text style={tss.dropdownBalance}>
+                    {bal < 0.0001 ? '<0.0001' : bal < 1 ? bal.toFixed(4) : bal < 1000 ? bal.toFixed(2) : bal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+          {filteredTokens.length === 0 && (
+            <Text style={tss.noResults}>No tokens found</Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const tss = StyleSheet.create({
+  container: { backgroundColor: '#0d1d30', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#1a3050' },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  label: { fontSize: 13, color: '#7090a0' },
+  balanceText: { fontSize: 12, color: '#7090a0' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tokenBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+    backgroundColor: '#0a1520', borderRadius: 10, borderWidth: 1, borderColor: '#1a3050',
+  },
+  tokenLogo: { width: 28, height: 28, borderRadius: 14 },
+  tokenSymbol: { color: '#e0e8f0', fontSize: 16, fontWeight: '700' },
+  amountInput: { flex: 1, color: '#ffffff', fontSize: 22, fontWeight: '600' },
+  maxBtn: {
+    paddingHorizontal: 8, paddingVertical: 4,
+    backgroundColor: 'rgba(126,200,232,0.1)', borderRadius: 6,
+  },
+  maxText: { color: '#7ec8e8', fontSize: 11, fontWeight: '700' },
+  usdValue: { color: '#5a7090', fontSize: 12, textAlign: 'right', marginTop: 6 },
+  dropdown: {
+    backgroundColor: '#0a1520', borderRadius: 12, borderWidth: 1,
+    borderColor: '#1a3050', marginTop: 8, overflow: 'hidden',
+  },
+  searchInput: {
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: '#1a3050', color: '#e0e8f0', fontSize: 14,
+  },
+  dropdownItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
+  dropdownLogo: { width: 36, height: 36, borderRadius: 18 },
+  dropdownSymbol: { color: '#e0e8f0', fontSize: 15, fontWeight: '600' },
+  dropdownName: { color: '#5a7090', fontSize: 12 },
+  dropdownBalance: { color: '#5a7090', fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  noResults: { color: '#5a7090', fontSize: 14, textAlign: 'center', paddingVertical: 16 },
+});
+
+// ---------- Pool Result Card ----------
+function PoolResultCard({
+  pool, selected, onPress, compact = false, isBest = false,
+}: {
+  pool: Pool; selected?: boolean; onPress?: () => void; compact?: boolean; isBest?: boolean;
+}) {
+  const dexLogos: Record<string, any> = {
+    meteora: require('../../assets/meteora-logo.png'),
+    orca: require('../../assets/orca-logo.png'),
+    raydium: require('../../assets/raydium-logo.png'),
+  };
+
+  const yield24h = pool.yield24h;
+  const tvlFormatted = pool.tvl >= 1_000_000
+    ? `$${(pool.tvl / 1_000_000).toFixed(1)}M`
+    : `$${(pool.tvl / 1_000).toFixed(0)}K`;
+
+  if (compact) {
+    return (
+      <TouchableOpacity
+        style={[pss.compactRow, selected && pss.compactSelected]}
+        onPress={onPress} activeOpacity={0.7}
+      >
+        <Image source={dexLogos[pool.dex]} style={pss.compactLogo} />
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={pss.compactDex}>{pool.dex.charAt(0).toUpperCase() + pool.dex.slice(1)}</Text>
+            {isBest && <View style={pss.bestBadge}><Text style={pss.bestBadgeText}>Best</Text></View>}
+          </View>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={pss.compactTvl}>TVL {tvlFormatted}</Text>
+          <Text style={pss.compactYield}>{yield24h.toFixed(3)}%</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <TouchableOpacity style={[pss.card, selected && pss.cardSelected]} onPress={onPress} activeOpacity={0.8}>
+      {selected && (
+        <View style={pss.bestRow}>
+          <View style={pss.bestDot} />
+          <Text style={pss.bestLabel}>BEST POOL FOUND</Text>
+        </View>
+      )}
+      <View style={pss.mainRow}>
+        <View style={pss.dexLogoWrap}>
+          <Image source={dexLogos[pool.dex]} style={pss.dexLogo} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={pss.dexName}>{pool.dex.charAt(0).toUpperCase() + pool.dex.slice(1)}</Text>
+          <Text style={pss.poolMeta}>Fee: {pool.feeTier.toFixed(2)}% | TVL: {tvlFormatted}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={pss.yieldText}>{yield24h.toFixed(3)}%</Text>
+          <Text style={pss.yieldLabel}>24h Yield</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const pss = StyleSheet.create({
+  card: { backgroundColor: '#0d1d30', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#1a3050', marginBottom: 8 },
+  cardSelected: { borderColor: 'rgba(126,200,232,0.5)', backgroundColor: 'rgba(126,200,232,0.05)' },
+  bestRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  bestDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7ec8e8' },
+  bestLabel: { color: '#7ec8e8', fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  mainRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  dexLogoWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#1a3050', alignItems: 'center', justifyContent: 'center' },
+  dexLogo: { width: 28, height: 28, borderRadius: 6 },
+  dexName: { color: '#e0e8f0', fontSize: 15, fontWeight: '600' },
+  poolMeta: { color: '#5a7090', fontSize: 12, marginTop: 4 },
+  yieldText: { color: '#7ec8e8', fontSize: 20, fontWeight: '800' },
+  yieldLabel: { color: '#5a7090', fontSize: 11 },
+  compactRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 10, backgroundColor: '#0d1d30', borderWidth: 1, borderColor: 'transparent', marginBottom: 6 },
+  compactSelected: { borderColor: 'rgba(126,200,232,0.5)', backgroundColor: 'rgba(126,200,232,0.1)' },
+  compactLogo: { width: 28, height: 28, borderRadius: 8 },
+  compactDex: { color: '#e0e8f0', fontSize: 14, fontWeight: '600' },
+  compactTvl: { color: '#5a7090', fontSize: 11 },
+  compactYield: { color: '#7ec8e8', fontSize: 13, fontWeight: '700' },
+  bestBadge: { backgroundColor: 'rgba(126,200,232,0.15)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 },
+  bestBadgeText: { color: '#7ec8e8', fontSize: 9, fontWeight: '700' },
+});
+
+// ---------- Main Home Screen ----------
+export function HomeScreen({ navigation }: any) {
+  const { connected, connect, publicKey } = useWallet();
+  const [tokenA, setTokenA] = useState<Token>(TOKENS[0]);
+  const [tokenB, setTokenB] = useState<Token>(TOKENS[1]);
+  const [amountA, setAmountA] = useState('');
+  const [amountB, setAmountB] = useState('');
+  const [pools, setPools] = useState<Pool[]>([]);
+  const [selectedPool, setSelectedPool] = useState<Pool | null>(null);
+  const [bestPool, setBestPool] = useState<Pool | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [autoRebalance, setAutoRebalance] = useState(true);
+  const [privacy, setPrivacy] = useState(true);
+  const [showAlternatives, setShowAlternatives] = useState(false);
+  const [tokenPrices, setTokenPrices] = useState({ tokenA: 0, tokenB: 0 });
+  const [openDropdown, setOpenDropdown] = useState<'a' | 'b' | null>(null);
+  const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({});
+
+  const debounceA = useRef<NodeJS.Timeout | null>(null);
+  const debounceB = useRef<NodeJS.Timeout | null>(null);
+  const lastEditRef = useRef<'a' | 'b' | null>(null);
+
+  // Fetch token balances when wallet connects
+  useEffect(() => {
+    if (!connected || !publicKey) {
+      setTokenBalances({});
+      return;
+    }
+    // Fetch SOL + SPL balances via RPC
+    const fetchBalances = async () => {
+      try {
+        const rpcUrl = process.env.EXPO_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com';
+        // SOL balance
+        const solRes = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [publicKey.toBase58()] }),
+        });
+        const solData = await solRes.json();
+        const balances: Record<string, number> = {};
+        if (solData.result?.value) {
+          balances['SOL'] = solData.result.value / 1e9;
+        }
+
+        // Apply SOL rent reserve
+        if (balances['SOL'] !== undefined) {
+          balances['SOL'] = Math.max(0, balances['SOL'] - 0.05);
+        }
+
+        // SPL token balances
+        const splRes = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0', id: 2, method: 'getTokenAccountsByOwner',
+            params: [publicKey.toBase58(), { programId: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' }, { encoding: 'jsonParsed' }],
+          }),
+        });
+        const splData = await splRes.json();
+        if (splData.result?.value) {
+          for (const acct of splData.result.value) {
+            const info = acct.account?.data?.parsed?.info;
+            if (!info) continue;
+            const mint = info.mint;
+            const uiAmount = info.tokenAmount?.uiAmount ?? 0;
+            const token = TOKENS.find(t => t.mint === mint);
+            if (token && uiAmount > 0) {
+              balances[token.symbol] = uiAmount;
+            }
+          }
+        }
+        setTokenBalances(balances);
+      } catch (err) {
+        console.error('[Balance] Failed to fetch:', err);
+      }
+    };
+    fetchBalances();
+  }, [connected, publicKey]);
+
+  // Fetch token prices
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const idA = COINGECKO_IDS[tokenA.symbol];
+        const idB = COINGECKO_IDS[tokenB.symbol];
+        const ids = [idA, idB].filter(Boolean).join(',');
+        if (!ids) return;
+        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+        const data = await res.json();
+        setTokenPrices({
+          tokenA: idA ? (data[idA]?.usd || 0) : (tokenA.symbol === 'USDC' ? 1 : 0),
+          tokenB: idB ? (data[idB]?.usd || 0) : (tokenB.symbol === 'USDC' ? 1 : 0),
+        });
+      } catch {
+        setTokenPrices({ tokenA: 0, tokenB: 0 });
+      }
+    };
+    fetchPrices();
+  }, [tokenA, tokenB]);
+
+  // #1: Clear both when either is emptied. #2: sanitize. #3: debounced calc
+  const handleAmountAChange = (val: string) => {
+    setAmountA(val);
+    lastEditRef.current = 'a';
+    if (!val || val === '0' || val === '0.') {
+      setAmountB('');
+      return;
+    }
+    if (debounceA.current) clearTimeout(debounceA.current);
+    debounceA.current = setTimeout(() => {
+      if (val && tokenPrices.tokenA > 0 && tokenPrices.tokenB > 0) {
+        const usdVal = parseFloat(val) * tokenPrices.tokenA;
+        setAmountB((usdVal / tokenPrices.tokenB).toFixed(6));
+      }
+    }, 500);
+  };
+
+  const handleAmountBChange = (val: string) => {
+    setAmountB(val);
+    lastEditRef.current = 'b';
+    if (!val || val === '0' || val === '0.') {
+      setAmountA('');
+      return;
+    }
+    if (debounceB.current) clearTimeout(debounceB.current);
+    debounceB.current = setTimeout(() => {
+      if (val && tokenPrices.tokenA > 0 && tokenPrices.tokenB > 0) {
+        const usdVal = parseFloat(val) * tokenPrices.tokenB;
+        setAmountA((usdVal / tokenPrices.tokenA).toFixed(6));
+      }
+    }, 500);
+  };
+
+  // Balances already have SOL rent reserve applied
+  const effectiveBalanceA = tokenBalances[tokenA.symbol];
+  const effectiveBalanceB = tokenBalances[tokenB.symbol];
+
+  const handleMaxA = () => {
+    if (effectiveBalanceA !== undefined) {
+      handleAmountAChange(effectiveBalanceA.toString());
+    }
+  };
+  const handleMaxB = () => {
+    if (effectiveBalanceB !== undefined) {
+      handleAmountBChange(effectiveBalanceB.toString());
+    }
+  };
+
+  const fetchPools = useCallback(async () => {
+    if (!tokenA || !tokenB) return;
     setLoading(true);
-    setSearched(true);
     try {
-      const results = await api.fetchPools(tokenA, tokenB);
+      const results = await api.fetchPools(tokenA.symbol, tokenB.symbol);
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setPools(results);
+      if (results.length > 0) {
+        setSelectedPool(results[0]);
+        setBestPool(results[0]);
+      } else {
+        setSelectedPool(null);
+        setBestPool(null);
+      }
     } catch {
-      // API not available — show empty state
       setPools([]);
+      setSelectedPool(null);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Auto-fetch on pair change
-  useEffect(() => {
-    if (tokenA && tokenB && tokenA !== tokenB) {
-      fetchPools();
-    }
   }, [tokenA, tokenB]);
 
-  const selectPair = (a: string, b: string) => {
-    setTokenA(a);
-    setTokenB(b);
+  useEffect(() => { fetchPools(); }, [fetchPools]);
+
+  const alternativePools = pools
+    .filter(p => selectedPool ? p.id !== selectedPool.id : true)
+    .slice(0, 5);
+
+  const toggleDropdownA = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpenDropdown(openDropdown === 'a' ? null : 'a');
+  };
+  const toggleDropdownB = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpenDropdown(openDropdown === 'b' ? null : 'b');
+  };
+
+  const depositDisabled = !connected || !selectedPool || !amountA || !amountB
+    || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0;
+
+  const depositLabel = !connected
+    ? 'Connect Wallet'
+    : !selectedPool
+    ? 'Select Tokens'
+    : !amountA || !amountB
+    ? 'Enter Amounts'
+    : 'Deposit Liquidity';
+
+  const handleDepositPress = () => {
+    if (!connected) { connect(); return; }
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/poseidon-bg.jpg')}
-      style={styles.bg}
-      resizeMode="cover"
-    >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.logo}>POSEIDON</Text>
-          <ConnectWalletButton />
-        </View>
+    <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <SharedHeader title="POSEIDON" subtitle="Find the best yields across Solana DEXs" />
 
-        {/* Tagline */}
-        <Text style={styles.tagline}>Find the best yields across Solana DEXs</Text>
-
-        {/* Token Pair Selector */}
+        {/* Deposit Card */}
+        <View style={{ paddingHorizontal: 20 }}>
         <Card style={styles.depositCard}>
-          <Text style={styles.cardTitle}>DEPOSIT LIQUIDITY</Text>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>DEPOSIT LIQUIDITY</Text>
+            <TouchableOpacity onPress={fetchPools} activeOpacity={0.6}>
+              <Ionicons name="refresh-outline" size={18} color={loading ? colors.accent : '#5a7090'} />
+            </TouchableOpacity>
+          </View>
 
-          <View style={styles.tokenRow}>
-            <View style={styles.tokenInput}>
-              <Text style={styles.inputLabel}>Token A</Text>
-              <TextInput
-                style={styles.tokenField}
-                value={tokenA}
-                onChangeText={setTokenA}
-                placeholderTextColor={colors.text.faint}
-                autoCapitalize="characters"
-              />
-            </View>
-            <Ionicons name="swap-horizontal" size={20} color={colors.text.faint} style={styles.swapIcon} />
-            <View style={styles.tokenInput}>
-              <Text style={styles.inputLabel}>Token B</Text>
-              <TextInput
-                style={styles.tokenField}
-                value={tokenB}
-                onChangeText={setTokenB}
-                placeholderTextColor={colors.text.faint}
-                autoCapitalize="characters"
-              />
+          <TokenSelector
+            selectedToken={tokenA} onSelect={setTokenA} excludeToken={tokenB}
+            label="You provide" amount={amountA} onAmountChange={handleAmountAChange}
+            usdPrice={tokenPrices.tokenA} balance={effectiveBalanceA}
+            onMaxPress={handleMaxA} isOpen={openDropdown === 'a'} onToggleOpen={toggleDropdownA}
+            tokenBalances={tokenBalances}
+          />
+
+          <View style={styles.plusRow}>
+            <View style={styles.plusCircle}>
+              <Ionicons name="add" size={16} color="#5a7090" />
             </View>
           </View>
 
-          {/* Quick Pairs */}
-          <View style={styles.quickPairs}>
-            {POPULAR_PAIRS.map((pair) => (
-              <TouchableOpacity
-                key={`${pair.tokenA}-${pair.tokenB}`}
-                style={[
-                  styles.pairChip,
-                  tokenA === pair.tokenA && tokenB === pair.tokenB && styles.pairChipActive,
-                ]}
-                onPress={() => selectPair(pair.tokenA, pair.tokenB)}
+          <TokenSelector
+            selectedToken={tokenB} onSelect={setTokenB} excludeToken={tokenA}
+            label="And" amount={amountB} onAmountChange={handleAmountBChange}
+            usdPrice={tokenPrices.tokenB} balance={effectiveBalanceB}
+            onMaxPress={handleMaxB} isOpen={openDropdown === 'b'} onToggleOpen={toggleDropdownB}
+            tokenBalances={tokenBalances}
+          />
+
+          {tokenPrices.tokenA === 0 || tokenPrices.tokenB === 0 ? (
+            <Text style={styles.priceNote}>Price unavailable. Enter both amounts manually.</Text>
+          ) : null}
+
+          <View style={{ marginTop: 12 }}>
+            {loading ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator size="small" color={colors.accent} />
+                <Text style={styles.loadingText}>Loading pools...</Text>
+              </View>
+            ) : selectedPool ? (
+              <PoolResultCard pool={selectedPool} selected={true} />
+            ) : !loading && pools.length === 0 ? (
+              <View style={styles.emptyPool}>
+                <Ionicons name="search-outline" size={20} color="#5a7090" />
+                <Text style={styles.emptyPoolText}>Select tokens to find pools</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {alternativePools.length > 0 && !loading && (
+            <View style={styles.altSection}>
+              <TouchableOpacity style={styles.altHeader}
+                onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setShowAlternatives(!showAlternatives); }}
+                activeOpacity={0.7}
               >
-                <Text style={[
-                  styles.pairChipText,
-                  tokenA === pair.tokenA && tokenB === pair.tokenB && styles.pairChipTextActive,
-                ]}>
-                  {pair.tokenA}/{pair.tokenB}
-                </Text>
+                <Text style={styles.altTitle}>Alternatives ({alternativePools.length})</Text>
+                <Ionicons name={showAlternatives ? 'chevron-up' : 'chevron-down'} size={16} color="#5a7090" />
               </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Amount */}
-          <View style={styles.amountRow}>
-            <Text style={styles.inputLabel}>Amount (USD)</Text>
-            <TextInput
-              style={styles.amountField}
-              value={amount}
-              onChangeText={setAmount}
-              placeholder="1,000"
-              placeholderTextColor={colors.text.faint}
-              keyboardType="numeric"
-            />
-          </View>
-
-          {/* Toggles */}
-          <View style={styles.toggleRow}>
-            <TouchableOpacity
-              style={[styles.toggle, autoRebalance && styles.toggleActive]}
-              onPress={() => setAutoRebalance(!autoRebalance)}
-            >
-              <Ionicons
-                name={autoRebalance ? 'checkmark-circle' : 'ellipse-outline'}
-                size={18}
-                color={autoRebalance ? colors.accent : colors.text.faint}
-              />
-              <Text style={[styles.toggleText, autoRebalance && styles.toggleTextActive]}>
-                Auto-Rebalance
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.toggle, privacy && styles.toggleActive]}
-              onPress={() => setPrivacy(!privacy)}
-            >
-              <Ionicons
-                name={privacy ? 'shield-checkmark' : 'shield-outline'}
-                size={18}
-                color={privacy ? colors.accent : colors.text.faint}
-              />
-              <Text style={[styles.toggleText, privacy && styles.toggleTextActive]}>
-                Privacy
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </Card>
-
-        {/* Pool Results */}
-        {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={styles.loadingText}>Scanning DEXs...</Text>
-          </View>
-        ) : searched && pools.length > 0 ? (
-          <>
-            <Text style={styles.sectionTitle}>BEST POOLS FOR {tokenA}/{tokenB}</Text>
-            {pools.map((pool) => (
-              <Card key={pool.id} style={styles.poolCard}>
-                <View style={styles.poolHeader}>
-                  <View>
-                    <Text style={styles.poolDex}>{pool.dex}</Text>
-                    <Text style={styles.poolPair}>{pool.tokenA}/{pool.tokenB}</Text>
-                  </View>
-                  <View style={styles.poolRight}>
-                    <Text style={styles.poolYield}>{pool.yield24h.toFixed(1)}% APY</Text>
-                    <View style={[styles.scoreBadge, { backgroundColor: pool.score >= 80 ? colors.success + '30' : colors.warning + '30' }]}>
-                      <Text style={[styles.scoreText, { color: pool.score >= 80 ? colors.success : colors.warning }]}>
-                        Score: {pool.score}
-                      </Text>
-                    </View>
-                  </View>
+              {showAlternatives && (
+                <View style={{ marginTop: 8 }}>
+                  {alternativePools.map(pool => (
+                    <PoolResultCard key={pool.id} pool={pool} compact
+                      selected={selectedPool?.id === pool.id}
+                      onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setSelectedPool(pool); }}
+                      isBest={bestPool?.id === pool.id}
+                    />
+                  ))}
                 </View>
-                <View style={styles.poolStats}>
-                  <Text style={styles.poolStat}>TVL {formatNum(pool.tvl)}</Text>
-                  <Text style={styles.poolStat}>Vol {formatNum(pool.volume24h)}</Text>
-                  <Text style={styles.poolStat}>Fee {pool.feeTier}%</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.depositBtn, !connected && styles.depositBtnDisabled]}
-                  activeOpacity={0.8}
-                  disabled={!connected}
-                >
-                  <Text style={styles.depositBtnText}>
-                    {connected ? 'Deposit' : 'Connect Wallet to Deposit'}
-                  </Text>
-                </TouchableOpacity>
-              </Card>
-            ))}
-          </>
-        ) : searched && pools.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Ionicons name="search-outline" size={32} color={colors.text.faint} />
-            <Text style={styles.emptyText}>
-              {loading ? 'Scanning...' : 'No pools found. Make sure the agent API is running.'}
+              )}
+            </View>
+          )}
+
+          <View style={styles.toggleSection}>
+            <View style={styles.toggleRow}>
+              <Text style={styles.toggleLabel}>Auto-Rebalancing</Text>
+              <Switch value={autoRebalance}
+                onValueChange={(v) => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setAutoRebalance(v); }}
+                trackColor={{ false: '#1a3050', true: 'rgba(126,200,232,0.4)' }}
+                thumbColor={autoRebalance ? '#7ec8e8' : '#5a7090'}
+              />
+            </View>
+            {autoRebalance && (
+              <Text style={styles.toggleInfo}>Agent monitors 24/7 and rebalances when price moves out of range.</Text>
+            )}
+
+            <View style={[styles.toggleRow, { marginTop: 12 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name={privacy ? 'lock-closed' : 'lock-open-outline'} size={14} color={privacy ? '#7ec8e8' : '#5a7090'} />
+                <Text style={styles.toggleLabel}>Private Position</Text>
+              </View>
+              <Switch value={privacy}
+                onValueChange={(v) => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setPrivacy(v); }}
+                trackColor={{ false: '#1a3050', true: 'rgba(126,200,232,0.4)' }}
+                thumbColor={privacy ? '#7ec8e8' : '#5a7090'}
+              />
+            </View>
+            {privacy && (
+              <View style={styles.privacyBadge}>
+                <Ionicons name="shield-checkmark" size={10} color="#7ec8e8" />
+                <Text style={styles.privacyBadgeText}>Encrypted with Arcium</Text>
+              </View>
+            )}
+          </View>
+
+          {amountA && parseFloat(amountA) > 0 && connected && (
+            <View style={styles.feeSection}>
+              <View style={styles.feeRow}>
+                <Text style={styles.feeLabel}>Fees</Text>
+                <Text style={styles.feeValue}>~0.00025 SOL</Text>
+              </View>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[styles.depositBtn, depositDisabled && connected && styles.depositBtnDisabled]}
+            activeOpacity={0.8} onPress={handleDepositPress}
+          >
+            <Text style={[styles.depositBtnText, depositDisabled && connected && styles.depositBtnTextDisabled]}>
+              {depositLabel}
             </Text>
-          </Card>
-        ) : null}
+          </TouchableOpacity>
+        </Card>
+        </View>
       </ScrollView>
     </ImageBackground>
   );
@@ -228,101 +623,48 @@ export function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   bg: { flex: 1 },
   container: { flex: 1 },
-  content: { padding: 20, paddingTop: 60, paddingBottom: 40 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  logo: { fontSize: 22, fontWeight: '900', color: colors.accent, letterSpacing: 2 },
-  tagline: { color: colors.text.muted, fontSize: 14, marginBottom: 20 },
+  content: { paddingBottom: 40 },
 
-  depositCard: { marginBottom: 20 },
-  cardTitle: { color: colors.text.muted, fontSize: 12, fontWeight: '700', letterSpacing: 2, marginBottom: 16 },
-
-  tokenRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 12 },
-  tokenInput: { flex: 1 },
-  inputLabel: { color: colors.text.faint, fontSize: 11, fontWeight: '600', marginBottom: 6 },
-  tokenField: {
-    backgroundColor: colors.bg.deep,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: colors.text.primary,
-    fontSize: 16,
-    fontWeight: '700',
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
+  depositCard: { marginBottom: 20, paddingBottom: 0, overflow: 'visible' },
+  cardHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#1a3050', marginBottom: 12,
   },
-  swapIcon: { paddingBottom: 14 },
+  cardTitle: { color: '#e0e8f0', fontSize: 16, fontWeight: '700', letterSpacing: 1 },
 
-  quickPairs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  pairChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    backgroundColor: colors.bg.deep,
-  },
-  pairChipActive: { borderColor: colors.accent, backgroundColor: colors.accent + '15' },
-  pairChipText: { color: colors.text.faint, fontSize: 12, fontWeight: '600' },
-  pairChipTextActive: { color: colors.accent },
-
-  amountRow: { marginBottom: 16 },
-  amountField: {
-    backgroundColor: colors.bg.deep,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: colors.text.primary,
-    fontSize: 18,
-    fontWeight: '700',
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
+  plusRow: { alignItems: 'center', marginVertical: -4, zIndex: 10 },
+  plusCircle: {
+    width: 36, height: 36, borderRadius: 10, backgroundColor: '#0a1520',
+    borderWidth: 1, borderColor: '#1a3050', alignItems: 'center', justifyContent: 'center',
   },
 
-  toggleRow: { flexDirection: 'row', gap: 12 },
-  toggle: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    backgroundColor: colors.bg.deep,
+  priceNote: { color: '#5a7090', fontSize: 10, marginTop: 4 },
+  loadingWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
+  loadingText: { color: '#5a7090', fontSize: 12 },
+  emptyPool: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#0d1d30', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#1a3050',
   },
-  toggleActive: { borderColor: colors.accent + '60', backgroundColor: colors.accent + '10' },
-  toggleText: { color: colors.text.faint, fontSize: 13, fontWeight: '600' },
-  toggleTextActive: { color: colors.accent },
+  emptyPoolText: { color: '#5a7090', fontSize: 13 },
 
-  loadingWrap: { alignItems: 'center', marginTop: 32, gap: 12 },
-  loadingText: { color: colors.text.muted, fontSize: 14 },
+  altSection: { borderTopWidth: 1, borderTopColor: '#1a3050', marginTop: 12, paddingTop: 8 },
+  altHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  altTitle: { color: '#8899aa', fontSize: 13, fontWeight: '600' },
 
-  sectionTitle: {
-    color: colors.text.muted, fontSize: 12, fontWeight: '700',
-    letterSpacing: 2, marginBottom: 12,
-  },
+  toggleSection: { marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#1a3050' },
+  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  toggleLabel: { color: '#e0e8f0', fontSize: 14, fontWeight: '500' },
+  toggleInfo: { color: '#5a7090', fontSize: 11, marginTop: 4, lineHeight: 16 },
+  privacyBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  privacyBadgeText: { color: '#7ec8e8', fontSize: 11 },
 
-  poolCard: { marginBottom: 12 },
-  poolHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  poolDex: { color: colors.text.faint, fontSize: 11, fontWeight: '600' },
-  poolPair: { color: colors.text.primary, fontSize: 17, fontWeight: '700' },
-  poolRight: { alignItems: 'flex-end' },
-  poolYield: { color: colors.success, fontSize: 16, fontWeight: '800' },
-  scoreBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4 },
-  scoreText: { fontSize: 12, fontWeight: '700' },
-  poolStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, marginBottom: 12 },
-  poolStat: { color: colors.text.muted, fontSize: 12 },
+  feeSection: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#1a3050' },
+  feeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  feeLabel: { color: '#5a7090', fontSize: 12 },
+  feeValue: { color: '#8899aa', fontSize: 12 },
 
-  depositBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  depositBtnDisabled: { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.subtle },
-  depositBtnText: { color: colors.bg.deep, fontSize: 15, fontWeight: '800' },
-
-  emptyCard: { alignItems: 'center', paddingVertical: 32, gap: 12 },
-  emptyText: { color: colors.text.faint, fontSize: 14, textAlign: 'center' },
+  depositBtn: { backgroundColor: '#7ec8e8', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 16, marginBottom: 16 },
+  depositBtnDisabled: { backgroundColor: '#0d1d30', borderWidth: 1, borderColor: '#1a3050' },
+  depositBtnText: { color: '#0a1520', fontSize: 16, fontWeight: '700' },
+  depositBtnTextDisabled: { color: '#5a7090' },
 });

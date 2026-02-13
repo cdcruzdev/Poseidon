@@ -92,14 +92,13 @@ export default function DepositCard() {
   }, [publicKey, connection]);
 
   const SOL_RENT_RESERVE = 0.05;
-  const rawBalanceA = tokenA ? tokenBalances[tokenA.symbol] : undefined;
-  const balanceA = rawBalanceA !== undefined && tokenA?.symbol === "SOL"
-    ? Math.max(0, rawBalanceA - SOL_RENT_RESERVE)
-    : rawBalanceA;
-  const rawBalanceB = tokenB ? tokenBalances[tokenB.symbol] : undefined;
-  const balanceB = rawBalanceB !== undefined && tokenB?.symbol === "SOL"
-    ? Math.max(0, rawBalanceB - SOL_RENT_RESERVE)
-    : rawBalanceB;
+  // Apply rent reserve to SOL in the shared balances object so dropdown + label match
+  const adjustedBalances = { ...tokenBalances };
+  if (adjustedBalances["SOL"] !== undefined) {
+    adjustedBalances["SOL"] = Math.max(0, adjustedBalances["SOL"] - SOL_RENT_RESERVE);
+  }
+  const balanceA = tokenA ? adjustedBalances[tokenA.symbol] : undefined;
+  const balanceB = tokenB ? adjustedBalances[tokenB.symbol] : undefined;
 
   // Fetch token prices from CoinGecko
   useEffect(() => {
@@ -351,7 +350,7 @@ export default function DepositCard() {
             onAmountChange={setAmountA}
             balance={balanceA}
             usdPrice={tokenPrices.tokenA}
-            tokenBalances={tokenBalances}
+            tokenBalances={adjustedBalances}
           />
 
           <div className="flex items-center justify-center -my-1 relative z-10">
@@ -371,7 +370,7 @@ export default function DepositCard() {
             onAmountChange={(val) => { setManualTokenB(true); setAmountB(val); }}
             balance={balanceB}
             usdPrice={tokenPrices.tokenB}
-            tokenBalances={tokenBalances}
+            tokenBalances={adjustedBalances}
           />
           {tokenPrices.tokenA === 0 || tokenPrices.tokenB === 0 ? (
             <p className="text-[10px] text-[#5a7090] px-1">Price unavailable — enter both amounts manually.</p>
@@ -443,45 +442,12 @@ export default function DepositCard() {
             />
           </div>
 
-          {canDeposit && (privacyEnabled || autoRebalance) && (
+          {canDeposit && (
             <div className="border-t border-[#1a3050] pt-3">
-              <button
-                onClick={() => setShowFees(!showFees)}
-                className="w-full flex items-center justify-between text-sm text-[#8899aa] hover:text-[#ffffff] transition-colors"
-              >
-                <span>Fee Summary</span>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className={`transition-transform ${showFees ? "rotate-180" : ""}`}
-                >
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
-              <AnimateHeight open={showFees}>
-                <div className="mt-3 space-y-2 text-sm">
-                  {privacyEnabled && (
-                    <div className="flex justify-between">
-                      <span className="text-[#5a7090]">Privacy (Arcium)</span>
-                      <span className="text-[#8899aa]">0.1% of deposit</span>
-                    </div>
-                  )}
-                  {autoRebalance && (
-                    <div className="flex justify-between">
-                      <span className="text-[#5a7090]">Auto-Rebalancing</span>
-                      <span className="text-[#8899aa]">5% of rebalance fees</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between pt-2 border-t border-[#1a3050]">
-                    <span className="text-[#8899aa]">Network Fee</span>
-                    <span className="text-[#8899aa]">~0.00025 SOL</span>
-                  </div>
-                </div>
-              </AnimateHeight>
+              <div className="flex justify-between text-sm">
+                <span className="text-[#5a7090]">Fees</span>
+                <span className="text-[#8899aa]">~0.00025 SOL</span>
+              </div>
             </div>
           )}
 

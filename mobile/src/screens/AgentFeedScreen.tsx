@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { Card } from '../components/Card';
+import { SharedHeader } from '../components/SharedHeader';
 import { api, AgentAction } from '../api/client';
 import { useApi } from '../hooks/useApi';
 
@@ -58,8 +59,7 @@ export function AgentFeedScreen() {
   return (
     <ImageBackground source={require('../../assets/poseidon-bg.jpg')} style={styles.bg} resizeMode="cover">
     <View style={styles.container}>
-      <Text style={styles.title}>AGENT FEED</Text>
-      <Text style={styles.subtitle}>Real-time actions from your Poseidon agent</Text>
+      <SharedHeader title="AGENT FEED" subtitle="Real-time actions from your Poseidon agent" />
 
       {items.length === 0 && !loading && (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 100 }}>
@@ -104,9 +104,7 @@ export function AgentFeedScreen() {
 
 const styles = StyleSheet.create({
   bg: { flex: 1 },
-  container: { flex: 1, paddingTop: 60 },
-  title: { fontSize: 18, fontWeight: '900', color: colors.accent, letterSpacing: 2, paddingHorizontal: 20 },
-  subtitle: { color: colors.text.faint, fontSize: 13, paddingHorizontal: 20, marginBottom: 20, marginTop: 4 },
+  container: { flex: 1 },
   feedItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4, position: 'relative' },
   timelineLine: {
     position: 'absolute', left: 19, top: 40, bottom: -4, width: 2,

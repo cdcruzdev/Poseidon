@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
-import { Alert } from 'react-native';
+﻿import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
+// Alert removed - using silent connect/disconnect
 import { PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
 import {
   transact,
@@ -133,51 +133,49 @@ export function WalletProvider({ children }: WalletProviderProps) {
       const result = await Promise.race([transactPromise, timeoutPromise]);
 
       if (result && result.address) {
-        await AsyncStorage.setItem(STORAGE_KEY_PUBKEY, result.address);
+        // MWA may return address as base64 bytes or base58 string
+        let pubkey: PublicKey;
+        try {
+          pubkey = new PublicKey(result.address);
+        } catch {
+          // If base58 fails, try decoding as base64
+          const bytes = Uint8Array.from(atob(result.address), c => c.charCodeAt(0));
+          pubkey = new PublicKey(bytes);
+        }
+        const base58Address = pubkey.toBase58();
+        await AsyncStorage.setItem(STORAGE_KEY_PUBKEY, base58Address);
         if (result.authToken) {
           await AsyncStorage.setItem(STORAGE_KEY_AUTH, result.authToken);
         }
-        const pubkey = new PublicKey(result.address);
         setPublicKey(pubkey);
         setAuthToken(result.authToken);
-        Alert.alert('Connected', `Wallet: ${result.address.slice(0, 8)}...`);
+        // Connected successfully
       } else {
-        Alert.alert('Error', 'No address returned from wallet');
+        console.error('[Wallet] No address returned from wallet');
       }
     } catch (err: any) {
       console.error('[Wallet] Connect error:', err);
-      Alert.alert('Wallet Error', err?.message || String(err));
+      console.error('[Wallet] Connect failed:', err?.message || String(err));
     } finally {
       setConnecting(false);
     }
   }, [connecting]);
 
   const disconnect = useCallback(async () => {
-    if (!authToken) {
-      setPublicKey(null);
-      await AsyncStorage.multiRemove([STORAGE_KEY_PUBKEY, STORAGE_KEY_AUTH]);
-      return;
-    }
-    try {
-      await transact(async (wallet: Web3MobileWallet) => {
-        await wallet.deauthorize({ auth_token: authToken });
-      });
-    } catch (err) {
-      console.error('[Wallet] Disconnect error:', err);
-    } finally {
-      setPublicKey(null);
-      setAuthToken(null);
-      await AsyncStorage.multiRemove([STORAGE_KEY_PUBKEY, STORAGE_KEY_AUTH]);
-    }
-  }, [authToken]);
+    // Clear local state immediately -- no MWA dialog popup
+    setPublicKey(null);
+    setAuthToken(null);
+    await AsyncStorage.multiRemove([STORAGE_KEY_PUBKEY, STORAGE_KEY_AUTH]);
+    console.log('[Wallet] Disconnected');
+  }, []);
 
-  // Force disconnect — clears local state without talking to wallet
+  // Force disconnect ΓÇö clears local state without talking to wallet
   const forceDisconnect = useCallback(async () => {
     setPublicKey(null);
     setAuthToken(null);
     setConnecting(false);
     await AsyncStorage.multiRemove([STORAGE_KEY_PUBKEY, STORAGE_KEY_AUTH]);
-    Alert.alert('Force Disconnected', 'Local wallet state cleared. You can now try connecting fresh.');
+    console.log('[Wallet] Force disconnected - local state cleared');
   }, []);
 
   const signTransaction = useCallback(
