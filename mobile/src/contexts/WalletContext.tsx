@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const APP_IDENTITY = {
   name: 'Poseidon',
-  uri: 'https://poseidon.trade' as `${string}:${string}`,
+  uri: 'https://poseidon.exchange' as `${string}:${string}`,
   icon: 'favicon.ico',
 };
 

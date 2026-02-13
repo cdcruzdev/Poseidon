@@ -473,8 +473,14 @@ export function HomeScreen({ navigation }: any) {
     setOpenDropdown(openDropdown === 'b' ? null : 'b');
   };
 
+  const parsedA = amountA ? parseFloat(amountA) : 0;
+  const parsedB = amountB ? parseFloat(amountB) : 0;
+  const insufficientA = displayBalanceA !== undefined && parsedA > displayBalanceA;
+  const insufficientB = displayBalanceB !== undefined && parsedB > displayBalanceB;
+  const insufficientBalance = (insufficientA || insufficientB) && parsedA > 0 && parsedB > 0;
+
   const depositDisabled = !connected || !selectedPool || !amountA || !amountB
-    || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0;
+    || parsedA <= 0 || parsedB <= 0 || insufficientBalance;
 
   const depositLabel = !connected
     ? 'Connect Wallet'
@@ -482,10 +488,17 @@ export function HomeScreen({ navigation }: any) {
     ? 'Select Tokens'
     : !amountA || !amountB
     ? 'Enter Amounts'
+    : insufficientBalance
+    ? 'Insufficient Balance'
     : 'Deposit Liquidity';
 
+  const [depositMessage, setDepositMessage] = useState<string | null>(null);
   const handleDepositPress = () => {
     if (!connected) { connect(); return; }
+    if (insufficientBalance) return;
+    // Mobile deposits route through backend API (DEX SDKs are server-side only)
+    setDepositMessage('Deposits are processed through the Poseidon agent. Feature coming soon.');
+    setTimeout(() => setDepositMessage(null), 3000);
   };
 
   return (
@@ -600,12 +613,30 @@ export function HomeScreen({ navigation }: any) {
             )}
           </View>
 
-          {amountA && parseFloat(amountA) > 0 && connected && (
+          {parsedA > 0 && connected && selectedPool && (
             <View style={styles.feeSection}>
               <View style={styles.feeRow}>
-                <Text style={styles.feeLabel}>Fees</Text>
+                <Text style={styles.feeLabel}>Network fee</Text>
                 <Text style={styles.feeValue}>~0.00025 SOL</Text>
               </View>
+              {privacy && (
+                <View style={styles.feeRow}>
+                  <Text style={styles.feeLabel}>Privacy fee</Text>
+                  <Text style={styles.feeValue}>{(parsedA * tokenPrices.tokenA * 0.001).toFixed(4)} USD</Text>
+                </View>
+              )}
+              {autoRebalance && (
+                <View style={styles.feeRow}>
+                  <Text style={styles.feeLabel}>Rebalance fee</Text>
+                  <Text style={styles.feeValue}>5% of earned fees</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {depositMessage && (
+            <View style={{ backgroundColor: 'rgba(126,200,232,0.1)', borderRadius: 10, padding: 12, marginTop: 12 }}>
+              <Text style={{ color: '#7ec8e8', fontSize: 12, textAlign: 'center' }}>{depositMessage}</Text>
             </View>
           )}
 
@@ -627,7 +658,7 @@ export function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   bg: { flex: 1 },
   container: { flex: 1 },
-  content: { paddingBottom: 40 },
+  content: { paddingBottom: 40, paddingTop: 0 },
 
   depositCard: { marginBottom: 20, paddingBottom: 0, overflow: 'visible' },
   cardHeader: {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, Platform, StatusBar } from 'react-native';
 import { ConnectWalletButton } from './ConnectWalletButton';
 import { colors } from '../theme/colors';
 
@@ -8,9 +8,11 @@ interface SharedHeaderProps {
   subtitle?: string;
 }
 
+const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 8 : 50;
+
 export function SharedHeader({ title, subtitle }: SharedHeaderProps) {
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { paddingTop: STATUSBAR_HEIGHT }]}>
       <View style={styles.row}>
         <View style={styles.logoRow}>
           <Image source={require('../../assets/poseidon-icon.png')} style={styles.logoImg} />
@@ -24,7 +26,7 @@ export function SharedHeader({ title, subtitle }: SharedHeaderProps) {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { paddingTop: 60, paddingHorizontal: 20, marginBottom: 8 },
+  wrapper: { paddingHorizontal: 20, marginBottom: 8 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   logoImg: { width: 28, height: 28, borderRadius: 14 },

@@ -98,12 +98,6 @@ export default function AgentPerformance() {
       color: "#4ade80",
     },
     {
-      label: "IL Saved",
-      value: p.ilSaved,
-      sub: "vs static position",
-      color: "#8B5CF6",
-    },
-    {
       label: "Gas Spent",
       value: p.gasSpent,
       color: "#fbbf24",
@@ -177,23 +171,6 @@ export default function AgentPerformance() {
                   style={{
                     width: `${p.successRate}%`,
                     backgroundColor: "#4ade80",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Avg Confidence */}
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-xs text-[#8899aa]">Avg Confidence</span>
-                <span className="text-xs font-mono text-[#8B5CF6]">{p.avgConfidence}%</span>
-              </div>
-              <div className="h-1.5 bg-[#1a3050] rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${p.avgConfidence}%`,
-                    backgroundColor: "#8B5CF6",
                   }}
                 />
               </div>

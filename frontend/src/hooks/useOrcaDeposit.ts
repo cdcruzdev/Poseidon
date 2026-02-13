@@ -171,10 +171,18 @@ export function useOrcaDeposit() {
         // Set recent blockhash and fee payer, then partial-sign with any keypair signers
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
         for (const { tx: builtTx, signers } of allSignerSets) {
-          builtTx.recentBlockhash = blockhash;
-          builtTx.feePayer = wallet.publicKey;
-          if (signers.length > 0) {
-            builtTx.partialSign(...signers);
+          if ('recentBlockhash' in builtTx) {
+            // Legacy Transaction
+            builtTx.recentBlockhash = blockhash;
+            builtTx.feePayer = wallet.publicKey;
+            if (signers.length > 0) {
+              builtTx.partialSign(...signers);
+            }
+          } else if ('message' in builtTx) {
+            // VersionedTransaction - signers need to sign directly
+            if (signers.length > 0) {
+              (builtTx as any).sign(signers);
+            }
           }
           transactionsToSign.push(builtTx);
         }

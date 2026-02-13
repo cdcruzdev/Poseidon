@@ -433,11 +433,6 @@ export default function DepositCard() {
               targetYield={targetYield}
               onTargetYieldChange={setTargetYield}
             />
-            <AnimateHeight open={autoRebalance}>
-              <div className="pb-1">
-                <StrategyPresets selected={strategy} onSelect={setStrategy} />
-              </div>
-            </AnimateHeight>
             <PrivacyToggle
               enabled={privacyEnabled}
               onEnabledChange={setPrivacyEnabled}
