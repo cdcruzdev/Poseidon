@@ -8,9 +8,14 @@ import { TOKEN_PROGRAM_ID, AccountLayout } from "@solana/spl-token";
 import type { Position } from "@/types/position";
 import BN from "bn.js";
 
-// Use RPC proxy in browser, env var for SSR/build
-const RPC_URL = typeof window !== "undefined" ? "/api/rpc" : (process.env.HELIUS_RPC_URL || "https://mainnet.helius-rpc.com");
-const connection = new Connection(RPC_URL, "confirmed");
+// Use RPC proxy in browser (full URL required by Connection class), env var for SSR/build
+function getRpcUrl() {
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/api/rpc`;
+  }
+  return process.env.HELIUS_RPC_URL || "https://mainnet.helius-rpc.com";
+}
+const connection = new Connection(getRpcUrl(), "confirmed");
 
 const KNOWN_MINTS: Record<string, { symbol: string; decimals: number }> = {
   "So11111111111111111111111111111111111111112": { symbol: "SOL", decimals: 9 },
