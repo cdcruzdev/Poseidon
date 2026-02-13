@@ -18,7 +18,7 @@ export default function MyPositions() {
 
   if (!connected) {
     return (
-      <div>
+      <div className="max-w-xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl tracking-wider text-white" style={{ fontFamily: "var(--font-bebas)" }}>
             MY POSITIONS
@@ -43,10 +43,12 @@ export default function MyPositions() {
   }
 
   return (
-    <PositionList
-      positions={positions}
-      loading={loading}
-      emptyMessage="No positions found. Deposit liquidity to get started."
-    />
+    <div className="max-w-xl mx-auto">
+      <PositionList
+        positions={positions}
+        loading={loading}
+        emptyMessage="No positions found. Deposit liquidity to get started."
+      />
+    </div>
   );
 }

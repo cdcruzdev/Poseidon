@@ -92,44 +92,76 @@ export function usePositions() {
 }
 
 function txToPosition(tx: HeliusTx, dex: string): Position {
-  // Extract token info from transfers
-  const tokens = tx.tokenTransfers?.filter(t => t.tokenAmount > 0) || [];
-  const tokenSymbols = tokens.length >= 2
-    ? `${formatMint(tokens[0].mint)}/${formatMint(tokens[1].mint)}`
-    : "LP Position";
+  // Extract deposited tokens (skip NFT mints — amount=1 with no known symbol)
+  const deposits = tx.tokenTransfers?.filter(t => {
+    if (t.tokenAmount <= 0) return false;
+    // Skip NFT position mints (amount exactly 1 and not a known token)
+    if (t.tokenAmount === 1 && !KNOWN_MINTS[t.mint]) return false;
+    // Only outgoing from user
+    const wallet = tx.nativeTransfers?.[0]?.fromUserAccount;
+    return wallet && t.fromUserAccount === wallet;
+  }) || [];
 
-  const solTransferred = tx.nativeTransfers
-    ?.filter(t => t.fromUserAccount === tx.nativeTransfers?.[0]?.fromUserAccount)
+  // Also check SOL transfers (native)
+  const wallet = tx.nativeTransfers?.[0]?.fromUserAccount;
+  const solOut = tx.nativeTransfers
+    ?.filter(t => t.fromUserAccount === wallet && t.amount > 10000000) // > 0.01 SOL (skip rent/fees)
     .reduce((sum, t) => sum + t.amount, 0) || 0;
+  const hasSolDeposit = solOut > 10000000; // > 0.01 SOL
+
+  // Build pair name
+  const symbols: string[] = [];
+  if (hasSolDeposit) symbols.push("SOL");
+  for (const d of deposits) {
+    const sym = formatMint(d.mint);
+    if (!symbols.includes(sym)) symbols.push(sym);
+  }
+  const pair = symbols.length >= 2 ? `${symbols[0]}/${symbols[1]}` : symbols.length === 1 ? `${symbols[0]}/...` : "LP Position";
+
+  // Calculate USD value of deposit
+  const solUsd = hasSolDeposit ? (solOut / 1e9) * SOL_PRICE : 0;
+  const tokenUsd = deposits.reduce((sum, d) => {
+    if (STABLES.includes(d.mint)) return sum + d.tokenAmount;
+    return sum;
+  }, 0);
+  const totalUsd = solUsd + tokenUsd;
 
   return {
     id: tx.signature.slice(0, 12),
-    pair: tokenSymbols,
+    pair,
     dex,
-    deposited: solTransferred > 0 ? `${(solTransferred / 1e9).toFixed(4)} SOL` : "-",
-    current: "-",
-    pnl: "-",
-    pnlPct: "-",
+    deposited: totalUsd > 0 ? `$${totalUsd.toFixed(2)}` : "-",
+    current: totalUsd > 0 ? `$${totalUsd.toFixed(2)}` : "-",
+    pnl: "$0.00",
+    pnlPct: "0.0%",
     apy: "-",
     range: "Active",
     status: "in-range",
     rebalances: 0,
     age: getAge(tx.timestamp * 1000),
-    feesEarned: "-",
+    feesEarned: "$0.00",
     nextRebalance: "Monitoring",
   };
 }
 
+// Approximate SOL price (fetched at load time would be better, but this works for hackathon)
+const SOL_PRICE = 195;
+const STABLES = [
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+  "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", // USDT
+];
+
+const KNOWN_MINTS: Record<string, string> = {
+  "So11111111111111111111111111111111111111112": "SOL",
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USDC",
+  "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "USDT",
+  "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN": "JUP",
+  "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263": "BONK",
+  "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm": "WIF",
+};
+
 function formatMint(mint: string): string {
-  const KNOWN: Record<string, string> = {
-    "So11111111111111111111111111111111111111112": "SOL",
-    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USDC",
-    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "USDT",
-    "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN": "JUP",
-    "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263": "BONK",
-    "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm": "WIF",
-  };
-  return KNOWN[mint] || mint.slice(0, 4) + "..";
+  return KNOWN_MINTS[mint] || mint.slice(0, 4) + "..";
 }
 
 function getAge(timestamp: number): string {

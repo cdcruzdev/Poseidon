@@ -57,7 +57,7 @@ export default function PositionCard({ position: pos, expanded, onToggle }: Posi
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">APY</p>
+            <p className="text-[10px] text-[#5a7090] uppercase tracking-wider">24h Yield</p>
             <p className="text-sm font-mono text-[#7ec8e8]">{pos.apy}</p>
           </div>
         </div>
