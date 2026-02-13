@@ -388,8 +388,15 @@ export default function DepositCard() {
         </div>
 
         {/* Slippage Settings */}
-        {showSlippage && (
-          <div className="px-4 py-3 border-b border-[#1a3050] flex items-center gap-2">
+        <div
+          className="overflow-hidden transition-all duration-300 ease-in-out border-b border-[#1a3050]"
+          style={{
+            maxHeight: showSlippage ? "60px" : "0px",
+            opacity: showSlippage ? 1 : 0,
+            borderBottomWidth: showSlippage ? 1 : 0,
+          }}
+        >
+          <div className="px-4 py-3 flex items-center gap-2">
             <span className="text-xs text-[#5a7090]">Slippage:</span>
             {[50, 100, 200].map(bps => (
               <button key={bps} onClick={() => setSlippageBps(bps)}
@@ -401,7 +408,7 @@ export default function DepositCard() {
               >{bps / 100}%</button>
             ))}
           </div>
-        )}
+        </div>
 
         {/* Card Body */}
         <div className="p-4 space-y-3">

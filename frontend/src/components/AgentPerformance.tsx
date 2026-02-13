@@ -92,14 +92,18 @@ export default function AgentPerformance() {
       color: "#4ade80",
     },
     {
-      label: "Net Profit",
-      value: p.netProfit,
-      sub: `after ${p.gasSpent} gas`,
-      color: "#4ade80",
+      label: "Actions",
+      value: String(p.totalActions),
+      color: "#7ec8e8",
     },
     {
-      label: "Gas Spent",
-      value: p.gasSpent,
+      label: "Rebalances",
+      value: String(p.rebalances),
+      color: "#a78bfa",
+    },
+    {
+      label: "Migrations",
+      value: String(p.migrations),
       color: "#fbbf24",
     },
   ];
@@ -193,14 +197,16 @@ export default function AgentPerformance() {
               </div>
             </div>
 
-            {/* Action breakdown */}
-            <div className="pt-2 border-t border-[#1a3050]/50">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[#5a7090]">
-                  {p.totalActions} actions -- {p.rebalances} rebalances -- {p.migrations} migrations
-                </span>
+            {/* Avg Confidence */}
+            {p.avgConfidence > 0 && (
+              <div className="pt-2 border-t border-[#1a3050]/50">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#5a7090]">
+                    Avg Confidence: {p.avgConfidence}%
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </>
       )}
