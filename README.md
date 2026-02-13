@@ -1,5 +1,7 @@
 # Poseidon -- LP Aggregator for Solana
 
+**Live:** [poseidon.exchange](https://poseidon.exchange)
+
 Compare and deploy LP positions across Meteora, Orca, and Raydium from one interface.
 
 Built for the Colosseum Agent Hackathon (Feb 2-13, 2026). 100% AI-written code.
