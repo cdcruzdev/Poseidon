@@ -560,7 +560,7 @@ export default function DepositCard() {
                 <span className="text-sm text-[#4ade80] font-medium">Deposit Successful!</span>
                 {txSignature && (
                   <a
-                    href={`https://solscan.io/tx/${txSignature}`}
+                    href={`https://orbmarkets.io/tx/${txSignature}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-[#7ec8e8] hover:underline"
