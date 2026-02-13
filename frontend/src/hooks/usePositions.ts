@@ -446,11 +446,8 @@ async function fetchAllPositions(wallet: PublicKey, solPrice: number): Promise<P
   }
 
   // --- METEORA DLMM ---
-  // Meteora positions aren't NFTs — they're program accounts with owner field
-  // Use getProgramAccounts with memcmp filter (filtered server-side, fast)
+  // Use @meteora-ag/dlmm SDK for accurate position values
   try {
-    // Meteora Position layout: disc(8) + lbPair(32) + owner(32) + ...
-    // Filter: owner at offset 40 matches wallet
     const meteoraAccounts = await connection.getProgramAccounts(METEORA_DLMM, {
       filters: [
         { memcmp: { offset: 40, bytes: wallet.toBase58() } },
@@ -458,68 +455,133 @@ async function fetchAllPositions(wallet: PublicKey, solPrice: number): Promise<P
     });
 
     if (meteoraAccounts.length > 0) {
-      // Extract unique lbPair addresses and batch-fetch them
-      const lbPairKeys: PublicKey[] = [];
-      const meteoraParsed: { pubkey: PublicKey; lbPair: PublicKey; data: Buffer }[] = [];
+      // Group positions by LB pair
+      const pairPositions = new Map<string, PublicKey[]>();
+      const positionLbPair = new Map<string, string>();
 
       for (const { pubkey, account } of meteoraAccounts) {
-        const data = account.data;
+        const data = account.data as Buffer;
         if (data.length < 80) continue;
         const lbPair = new PublicKey(data.subarray(8, 40));
         const owner = new PublicKey(data.subarray(40, 72));
         if (!owner.equals(wallet)) continue;
-        meteoraParsed.push({ pubkey, lbPair, data });
-        if (!lbPairKeys.some(k => k.equals(lbPair))) {
-          lbPairKeys.push(lbPair);
-        }
+        const pairKey = lbPair.toBase58();
+        positionLbPair.set(pubkey.toBase58(), pairKey);
+        if (!pairPositions.has(pairKey)) pairPositions.set(pairKey, []);
+        pairPositions.get(pairKey)!.push(pubkey);
       }
 
-      // Batch fetch all LB pair accounts
+      // Batch fetch LB pair accounts for mint info
+      const lbPairKeys = [...pairPositions.keys()].map(k => new PublicKey(k));
       const pairInfos = lbPairKeys.length > 0
         ? await connection.getMultipleAccountsInfo(lbPairKeys)
         : [];
-      const pairMap = new Map<string, Buffer>();
-      lbPairKeys.forEach((k, i) => { if (pairInfos[i]) pairMap.set(k.toBase58(), pairInfos[i]!.data as Buffer); });
+      const pairDataMap = new Map<string, Buffer>();
+      lbPairKeys.forEach((k, i) => { if (pairInfos[i]) pairDataMap.set(k.toBase58(), pairInfos[i]!.data as Buffer); });
 
-      for (const { pubkey, lbPair } of meteoraParsed) {
+      // Fetch Meteora API data for each pair (APR, TVL, price)
+      const meteoraApiData = new Map<string, { tvl: number; apr: number; currentPrice: number }>();
+      await Promise.all(lbPairKeys.map(async (key) => {
         try {
-          const pairData = pairMap.get(lbPair.toBase58());
+          const res = await fetch(`https://dlmm-api.meteora.ag/pair/${key.toBase58()}`, { signal: AbortSignal.timeout(5000) });
+          if (res.ok) {
+            const d = await res.json();
+            meteoraApiData.set(key.toBase58(), {
+              tvl: Number(d.liquidity) || 0,
+              apr: Number(d.apr) || 0,
+              currentPrice: Number(d.current_price) || 0,
+            });
+          }
+        } catch {}
+      }));
+
+      // Use DLMM SDK to get accurate position values
+      const { default: DLMM } = await import("@meteora-ag/dlmm");
+
+      for (const [pairKey, posPubkeys] of pairPositions) {
+        try {
+          const pairData = pairDataMap.get(pairKey);
           if (!pairData) continue;
 
-          // Meteora LB Pair layout: tokenMintX at offset 88, tokenMintY at offset 120
           const mintX = new PublicKey(pairData.subarray(88, 120));
           const mintY = new PublicKey(pairData.subarray(120, 152));
-
           const mintXStr = mintX.toBase58();
           const mintYStr = mintY.toBase58();
-
-          // Only include if we recognize at least one token
           if (!KNOWN_MINTS[mintXStr] && !KNOWN_MINTS[mintYStr]) continue;
 
-          // Meteora position-specific yield would require bin-level liquidity parsing
-          // For now show pool-wide if available
-          const apy = "-";
+          const decX = dec(mintXStr);
+          const decY = dec(mintYStr);
+          const apiData = meteoraApiData.get(pairKey);
+          const pairApr = apiData?.apr || 0;
 
-          positions.push({
-            id: pubkey.toBase58(),
-            positionAddress: pubkey.toBase58(),
-            poolAddress: lbPair.toBase58(),
-            pair: `${sym(mintXStr)}/${sym(mintYStr)}`,
-            dex: "Meteora",
-            deposited: "-",
-            current: "-",
-            pnl: "$0.00",
-            pnlPct: "0.0%",
-            apy,
-            range: "Active",
-            status: "in-range",
-            rebalances: 0,
-            age: "",
-            feesEarned: "$0.00",
-            nextRebalance: "Monitoring",
-          autoRebalance: false, // set after rebalance config fetch
-          });
-        } catch { continue; }
+          // Create DLMM instance and get positions
+          const dlmmPool = await DLMM.create(connection, new PublicKey(pairKey));
+          const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(wallet);
+
+          for (const userPos of userPositions) {
+            const posData = userPos.positionData;
+            // totalXAmount and totalYAmount are BN values in raw token units
+            const amountX = Number(posData.totalXAmount.toString()) / Math.pow(10, decX);
+            const amountY = Number(posData.totalYAmount.toString()) / Math.pow(10, decY);
+            const totalValue = toUsd(mintXStr, amountX, solPrice) + toUsd(mintYStr, amountY, solPrice);
+
+            // Fees earned
+            const feeX = Number(posData.feeX.toString()) / Math.pow(10, decX);
+            const feeY = Number(posData.feeY.toString()) / Math.pow(10, decY);
+            const feesUsd = toUsd(mintXStr, feeX, solPrice) + toUsd(mintYStr, feeY, solPrice);
+
+            const inRange = dlmmPool.lbPair.activeId >= posData.lowerBinId && dlmmPool.lbPair.activeId <= posData.upperBinId;
+            const apy = pairApr > 0 ? `${(pairApr / 365).toFixed(3)}%` : "-";
+
+            positions.push({
+              id: userPos.publicKey.toBase58(),
+              positionAddress: userPos.publicKey.toBase58(),
+              poolAddress: pairKey,
+              pair: `${sym(mintXStr)}/${sym(mintYStr)}`,
+              dex: "Meteora",
+              deposited: fmtUsd(totalValue),
+              current: fmtUsd(totalValue),
+              pnl: feesUsd > 0 ? `+${fmtUsd(feesUsd)}` : "$0.00",
+              pnlPct: totalValue > 0 && feesUsd > 0 ? `+${((feesUsd / totalValue) * 100).toFixed(1)}%` : "0.0%",
+              apy,
+              range: `Bins ${posData.lowerBinId}-${posData.upperBinId}`,
+              status: inRange ? "in-range" : "out-of-range",
+              rebalances: 0,
+              age: "",
+              feesEarned: fmtUsd(feesUsd),
+              nextRebalance: "Monitoring",
+              autoRebalance: false,
+            });
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch Meteora positions for pair ${pairKey}:`, err);
+          // Fallback: show basic position without values
+          const pairData = pairDataMap.get(pairKey);
+          if (!pairData) continue;
+          const mintX = new PublicKey(pairData.subarray(88, 120));
+          const mintY = new PublicKey(pairData.subarray(120, 152));
+          for (const pubkey of posPubkeys) {
+            positions.push({
+              id: pubkey.toBase58(),
+              positionAddress: pubkey.toBase58(),
+              poolAddress: pairKey,
+              pair: `${sym(mintX.toBase58())}/${sym(mintY.toBase58())}`,
+              dex: "Meteora",
+              deposited: "-",
+              current: "-",
+              pnl: "$0.00",
+              pnlPct: "0.0%",
+              apy: "-",
+              range: "Active",
+              status: "in-range",
+              rebalances: 0,
+              age: "",
+              feesEarned: "$0.00",
+              nextRebalance: "Monitoring",
+              autoRebalance: false,
+            });
+          }
+        }
       }
     }
   } catch (err) {
