@@ -328,10 +328,7 @@ export function HomeScreen({ navigation }: any) {
           balances['SOL'] = solData.result.value / 1e9;
         }
 
-        // Apply SOL rent reserve
-        if (balances['SOL'] !== undefined) {
-          balances['SOL'] = Math.max(0, balances['SOL'] - 0.003);
-        }
+        // SOL rent reserve applied separately for max/validation, not display
 
         // SPL token balances
         const splRes = await fetch(rpcUrl, {
@@ -417,18 +414,23 @@ export function HomeScreen({ navigation }: any) {
     }, 500);
   };
 
-  // Balances already have SOL rent reserve applied
-  const effectiveBalanceA = tokenBalances[tokenA.symbol];
-  const effectiveBalanceB = tokenBalances[tokenB.symbol];
+  // Show full balance, but max/validation uses rent-adjusted
+  const SOL_RENT_RESERVE = 0.003;
+  const displayBalanceA = tokenBalances[tokenA.symbol];
+  const displayBalanceB = tokenBalances[tokenB.symbol];
+  const maxBalanceA = displayBalanceA !== undefined && tokenA.symbol === 'SOL'
+    ? Math.max(0, displayBalanceA - SOL_RENT_RESERVE) : displayBalanceA;
+  const maxBalanceB = displayBalanceB !== undefined && tokenB.symbol === 'SOL'
+    ? Math.max(0, displayBalanceB - SOL_RENT_RESERVE) : displayBalanceB;
 
   const handleMaxA = () => {
-    if (effectiveBalanceA !== undefined) {
-      handleAmountAChange(effectiveBalanceA.toString());
+    if (maxBalanceA !== undefined) {
+      handleAmountAChange(maxBalanceA.toString());
     }
   };
   const handleMaxB = () => {
-    if (effectiveBalanceB !== undefined) {
-      handleAmountBChange(effectiveBalanceB.toString());
+    if (maxBalanceB !== undefined) {
+      handleAmountBChange(maxBalanceB.toString());
     }
   };
 
@@ -502,7 +504,7 @@ export function HomeScreen({ navigation }: any) {
           <TokenSelector
             selectedToken={tokenA} onSelect={setTokenA} excludeToken={tokenB}
             label="You provide" amount={amountA} onAmountChange={handleAmountAChange}
-            usdPrice={tokenPrices.tokenA} balance={effectiveBalanceA}
+            usdPrice={tokenPrices.tokenA} balance={displayBalanceA}
             onMaxPress={handleMaxA} isOpen={openDropdown === 'a'} onToggleOpen={toggleDropdownA}
             tokenBalances={tokenBalances}
           />
@@ -516,7 +518,7 @@ export function HomeScreen({ navigation }: any) {
           <TokenSelector
             selectedToken={tokenB} onSelect={setTokenB} excludeToken={tokenA}
             label="And" amount={amountB} onAmountChange={handleAmountBChange}
-            usdPrice={tokenPrices.tokenB} balance={effectiveBalanceB}
+            usdPrice={tokenPrices.tokenB} balance={displayBalanceB}
             onMaxPress={handleMaxB} isOpen={openDropdown === 'b'} onToggleOpen={toggleDropdownB}
             tokenBalances={tokenBalances}
           />

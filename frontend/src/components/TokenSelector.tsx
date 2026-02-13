@@ -12,6 +12,7 @@ interface TokenSelectorProps {
   amount: string;
   onAmountChange: (amount: string) => void;
   balance?: number;
+  maxBalance?: number;
   disabled?: boolean;
   usdPrice?: number;
   tokenBalances?: Record<string, number>;
@@ -28,6 +29,7 @@ export default function TokenSelector({
   disabled = false,
   usdPrice = 0,
   tokenBalances = {},
+  maxBalance,
 }: TokenSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -66,8 +68,9 @@ export default function TokenSelector({
   };
 
   const handleMaxClick = () => {
-    if (balance !== undefined) {
-      onAmountChange(balance.toString());
+    const max = maxBalance !== undefined ? maxBalance : balance;
+    if (max !== undefined) {
+      onAmountChange(max.toString());
     }
   };
 

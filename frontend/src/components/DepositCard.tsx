@@ -92,13 +92,13 @@ export default function DepositCard() {
   }, [publicKey, connection]);
 
   const SOL_RENT_RESERVE = 0.003;
-  // Apply rent reserve to SOL in the shared balances object so dropdown + label match
-  const adjustedBalances = { ...tokenBalances };
-  if (adjustedBalances["SOL"] !== undefined) {
-    adjustedBalances["SOL"] = Math.max(0, adjustedBalances["SOL"] - SOL_RENT_RESERVE);
-  }
-  const balanceA = tokenA ? adjustedBalances[tokenA.symbol] : undefined;
-  const balanceB = tokenB ? adjustedBalances[tokenB.symbol] : undefined;
+  // Show full balance in UI, but cap MAX at balance - rent reserve
+  const balanceA = tokenA ? tokenBalances[tokenA.symbol] : undefined;
+  const balanceB = tokenB ? tokenBalances[tokenB.symbol] : undefined;
+  const maxBalanceA = balanceA !== undefined && tokenA?.symbol === "SOL"
+    ? Math.max(0, balanceA - SOL_RENT_RESERVE) : balanceA;
+  const maxBalanceB = balanceB !== undefined && tokenB?.symbol === "SOL"
+    ? Math.max(0, balanceB - SOL_RENT_RESERVE) : balanceB;
 
   // Fetch token prices from CoinGecko
   useEffect(() => {
@@ -349,8 +349,9 @@ export default function DepositCard() {
             amount={amountA}
             onAmountChange={setAmountA}
             balance={balanceA}
+            maxBalance={maxBalanceA}
             usdPrice={tokenPrices.tokenA}
-            tokenBalances={adjustedBalances}
+            tokenBalances={tokenBalances}
           />
 
           <div className="flex items-center justify-center -my-1 relative z-10">
@@ -369,8 +370,9 @@ export default function DepositCard() {
             amount={amountB}
             onAmountChange={(val) => { setManualTokenB(true); setAmountB(val); }}
             balance={balanceB}
+            maxBalance={maxBalanceB}
             usdPrice={tokenPrices.tokenB}
-            tokenBalances={adjustedBalances}
+            tokenBalances={tokenBalances}
           />
           {tokenPrices.tokenA === 0 || tokenPrices.tokenB === 0 ? (
             <p className="text-[10px] text-[#5a7090] px-1">Price unavailable — enter both amounts manually.</p>
