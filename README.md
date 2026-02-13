@@ -14,10 +14,18 @@ Poseidon is an LP management platform for Solana. It solves three problems:
 
 3. **Visibility** -- Track all your LP positions across every DEX in one dashboard with real deposited values, current values, P&L, and estimated yields pulled directly from on-chain data and DEX APIs.
 
-### Roadmap (In Progress)
+### Auto-Rebalancing (Default On)
 
-- **Auto-Rebalancing** -- On-chain rebalance program deployed to mainnet (`HLsgAVzjjBaBR9QCLqV3vjC9LTnR2xtmtB77j1EJQBsZ`). Wallet-level opt-in live; per-position granularity ready to deploy. Agent monitors positions and rebalances when price drifts out of range.
-- **Privacy Layer** -- Arcium MPC integration for encrypted position management (devnet prototype complete).
+All deposits have auto-rebalancing enabled by default. The Poseidon agent monitors positions and rebalances when price drifts out of range:
+- **Max slippage:** 1% (100 bps)
+- **Target yield:** 0.05% daily (safe baseline)
+- On-chain rebalance config program deployed to mainnet (`HLsgAVzjjBaBR9QCLqV3vjC9LTnR2xtmtB77j1EJQBsZ`)
+- Per-position opt-out toggle coming soon (program upgrade ready, pending funding)
+
+### Roadmap
+
+- **Per-position rebalance controls** -- Toggle auto-rebalance per position with custom yield targets
+- **Privacy Layer** -- Arcium MPC integration for encrypted position management (devnet prototype complete)
 
 ## Architecture
 

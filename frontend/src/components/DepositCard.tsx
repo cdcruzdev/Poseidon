@@ -75,44 +75,43 @@ export default function DepositCard() {
   const [slippageBps, setSlippageBps] = useState(100); // 1% default
   const [showSlippage, setShowSlippage] = useState(false);
 
-  // Fetch all token balances at once
-  useEffect(() => {
+  // Fetch all token balances
+  const fetchAllBalances = useCallback(async () => {
     if (!publicKey || !connection) {
       setTokenBalances({});
       return;
     }
+    const balances: Record<string, number> = {};
 
-    const fetchAllBalances = async () => {
-      const balances: Record<string, number> = {};
+    // SOL balance
+    try {
+      const solBal = await connection.getBalance(publicKey);
+      balances["SOL"] = solBal / 1e9;
+    } catch { /* ignore */ }
 
-      // SOL balance
-      try {
-        const solBal = await connection.getBalance(publicKey);
-        balances["SOL"] = solBal / 1e9;
-      } catch { /* ignore */ }
-
-      // All SPL token balances in one call
-      try {
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
-          programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-        });
-        for (const account of tokenAccounts.value) {
-          const parsed = account.account.data.parsed?.info;
-          if (!parsed) continue;
-          const mint = parsed.mint as string;
-          const uiAmount = parsed.tokenAmount?.uiAmount ?? 0;
-          const token = TOKENS.find(t => t.mint === mint);
-          if (token && uiAmount > 0) {
-            balances[token.symbol] = uiAmount;
-          }
+    // All SPL token balances in one call
+    try {
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
+        programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+      });
+      for (const account of tokenAccounts.value) {
+        const parsed = account.account.data.parsed?.info;
+        if (!parsed) continue;
+        const mint = parsed.mint as string;
+        const uiAmount = parsed.tokenAmount?.uiAmount ?? 0;
+        const token = TOKENS.find(t => t.mint === mint);
+        if (token && uiAmount > 0) {
+          balances[token.symbol] = uiAmount;
         }
-      } catch { /* ignore */ }
+      }
+    } catch { /* ignore */ }
 
-      setTokenBalances(balances);
-    };
-
-    fetchAllBalances();
+    setTokenBalances(balances);
   }, [publicKey, connection]);
+
+  useEffect(() => {
+    fetchAllBalances();
+  }, [fetchAllBalances]);
 
   const SOL_RENT_RESERVE = 0.01;
   const DEPOSIT_BUFFER = 0.02; // 2% buffer so wallet simulation always shows less than UI balance
@@ -209,31 +208,25 @@ export default function DepositCard() {
     setPools([]);
     setSelectedPool(null);
 
-    const dexes = ["orca", "raydium", "meteora"];
-
-    // Helper: fetch with timeout
-    const fetchWithTimeout = async (dex: string, timeoutMs: number) => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
+    // Fetch pools from local API route (proxies to DEX APIs directly)
+    const fetchDexPools = async (dex: string): Promise<Pool[]> => {
       try {
-        const result = await fetch(
-          `${API_BASE}/api/pools?tokenA=${tokenA.symbol}&tokenB=${tokenB.symbol}&dex=${dex}&limit=20`,
-          { signal: controller.signal }
+        const res = await fetch(
+          `/api/pools?tokenA=${tokenA.symbol}&tokenB=${tokenB.symbol}&dex=${dex}`,
+          { signal: AbortSignal.timeout(15000) }
         );
-        const json = await result.json();
+        const json = await res.json();
         return json.success ? (json.data as Pool[]) : [];
       } catch {
         return [];
-      } finally {
-        clearTimeout(timer);
       }
     };
 
     // Fetch all 3 in parallel
     const [orcaPools, raydiumPools, meteoraPools] = await Promise.all([
-      fetchWithTimeout("orca", 15000),
-      fetchWithTimeout("raydium", 15000),
-      fetchWithTimeout("meteora", 15000),
+      fetchDexPools("orca"),
+      fetchDexPools("raydium"),
+      fetchDexPools("meteora"),
     ]);
 
     const allPools = [...orcaPools, ...raydiumPools, ...meteoraPools];
@@ -322,26 +315,11 @@ export default function DepositCard() {
 
       setTxSignature(result.signature);
 
-      // Register auto-rebalance preference via API (no extra wallet popup)
-      if (autoRebalance && publicKey) {
-        try {
-          const yieldBps = Math.round(parseFloat(targetYield) * 100);
-          await fetch(`${API_BASE}/api/agent/rebalance`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              wallet: publicKey.toBase58(),
-              pool: selectedPool.address,
-              enabled: true,
-              maxSlippageBps: slippageBps,
-              minYieldBps: yieldBps,
-              signature: result.signature,
-            }),
-          });
-        } catch {
-          // Rebalance registration is best-effort
-        }
-      }
+      // Auto-rebalance is enabled by default for all deposits.
+      // The agent monitors all Poseidon deposits and rebalances with:
+      //   - Max slippage: 1% (100 bps)
+      //   - Min yield improvement: 0.05% (5 bps) daily target
+      // Users can opt out once the per-position toggle is funded.
 
       setTxState("success");
       setTimeout(() => {
@@ -384,7 +362,7 @@ export default function DepositCard() {
               </svg>
             </button>
             <button
-              onClick={() => { lastPairRef.current = ""; setTokenBalances({}); fetchPools(); }}
+              onClick={() => { lastPairRef.current = ""; fetchAllBalances(); fetchPools(); }}
               disabled={loadingPools}
               className="p-2 rounded-lg hover:bg-[#1a3050]/50 transition-colors text-[#5a7090] hover:text-[#ffffff] disabled:opacity-50"
               title="Refresh pools & balances" aria-label="Refresh pools & balances"
