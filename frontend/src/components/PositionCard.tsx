@@ -152,6 +152,7 @@ export default function PositionCard({
             */}
           </div>
           <div className="flex gap-2 mt-4">
+            {/* TODO: Wire up close position with real DEX withdrawal transactions
             {onClose && (
               <button
                 onClick={() => onClose(pos.id)}
@@ -161,14 +162,17 @@ export default function PositionCard({
                 {closing ? "Closing..." : "Close Position"}
               </button>
             )}
-            <a
-              href={`https://orbmarkets.io/tx/${pos.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 text-xs bg-[#1a3050] text-[#7ec8e8] rounded-lg hover:bg-[#1a3050]/80 transition-colors cursor-pointer"
-            >
-              View on Explorer
-            </a>
+            */}
+            {pos.poolAddress && (
+              <a
+                href={`https://orbmarkets.io/address/${pos.poolAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 text-xs bg-[#1a3050] text-[#7ec8e8] rounded-lg hover:bg-[#1a3050]/80 transition-colors cursor-pointer"
+              >
+                View Pool
+              </a>
+            )}
           </div>
         </div>
       </AnimateHeight>

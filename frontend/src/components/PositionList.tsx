@@ -60,7 +60,7 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
           MY POSITIONS ({sorted.length})
         </h2>
         <div className="flex items-center gap-2">
-          {(["value", "apy", "pnl"] as const).map(opt => (
+          {(["value", "pnl"] as const).map(opt => (
             <button
               key={opt}
               onClick={() => setSortBy(opt)}
@@ -70,7 +70,7 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
                   : "bg-[#1a3050]/50 text-[#5a7090] border border-transparent hover:text-[#8899aa]"
               }`}
             >
-              {opt === "value" ? "Value" : opt === "apy" ? "Yield" : "P&L"}
+              {opt === "value" ? "Value" : "P&L"}
             </button>
           ))}
           {onRefresh && (
