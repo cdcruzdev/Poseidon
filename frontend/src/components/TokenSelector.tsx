@@ -79,11 +79,9 @@ export default function TokenSelector({
       {label && (
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm text-[#7090a0]">{label}</span>
-          {balance !== undefined && (
-            <span className="text-sm text-[#7090a0]">
-              Balance: <span className="text-[#ffffff]">{balance.toFixed(4)}</span>
-            </span>
-          )}
+          <span className="text-sm text-[#7090a0]">
+            Balance: <span className="text-[#ffffff]">{(balance ?? 0).toFixed(4)}</span>
+          </span>
         </div>
       )}
 
