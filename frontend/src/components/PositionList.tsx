@@ -17,10 +17,9 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
   const [expandedPosition, setExpandedPosition] = useState<string | null>(null);
   const [posPage, setPosPage] = useState(0);
   const [sortBy, setSortBy] = useState<"pnl" | "apy" | "value">("value");
-  const [filterDex, setFilterDex] = useState<string>("all");
 
   const sorted = useMemo(() => {
-    const filtered = positions.filter(p => filterDex === "all" || p.dex.toLowerCase() === filterDex);
+    const filtered = positions;
     return [...filtered].sort((a, b) => {
       if (sortBy === "apy") return parseFloat(b.apy) - parseFloat(a.apy);
       if (sortBy === "pnl") return parseFloat(b.pnl.replace(/[,$+]/g, "")) - parseFloat(a.pnl.replace(/[,$+]/g, ""));
@@ -54,26 +53,20 @@ export default function PositionList({ positions, loading, emptyMessage = "No po
         <h2 className="text-xl tracking-wider text-white" style={{ fontFamily: "var(--font-bebas)" }}>
           MY POSITIONS ({sorted.length})
         </h2>
-        <div className="flex items-center gap-2">
-          <select
-            value={filterDex}
-            onChange={(e) => { setFilterDex(e.target.value); setPosPage(0); }}
-            className="bg-[#0d1926] border border-[#1a3050] rounded-lg px-3 py-1.5 text-xs text-[#b8c8d8] cursor-pointer focus:outline-none focus:border-[#7ec8e8]"
-          >
-            <option value="all">All DEXs</option>
-            <option value="orca">Orca</option>
-            <option value="meteora">Meteora</option>
-            <option value="raydium">Raydium</option>
-          </select>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "pnl" | "apy" | "value")}
-            className="bg-[#0d1926] border border-[#1a3050] rounded-lg px-3 py-1.5 text-xs text-[#b8c8d8] cursor-pointer focus:outline-none focus:border-[#7ec8e8]"
-          >
-            <option value="value">Sort: Value</option>
-            <option value="apy">Sort: APY</option>
-            <option value="pnl">Sort: P&L</option>
-          </select>
+        <div className="flex items-center gap-1">
+          {(["value", "apy", "pnl"] as const).map(opt => (
+            <button
+              key={opt}
+              onClick={() => setSortBy(opt)}
+              className={`px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                sortBy === opt
+                  ? "bg-[#7ec8e8]/15 text-[#7ec8e8] border border-[#7ec8e8]/30"
+                  : "bg-[#1a3050]/50 text-[#5a7090] border border-transparent hover:text-[#8899aa]"
+              }`}
+            >
+              {opt === "value" ? "Value" : opt === "apy" ? "Yield" : "P&L"}
+            </button>
+          ))}
         </div>
       </div>
 

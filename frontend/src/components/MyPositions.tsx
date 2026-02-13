@@ -3,37 +3,44 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { useConnection } from "@solana/wallet-adapter-react";
 import { usePositions } from "@/hooks/usePositions";
+import { useClosePosition } from "@/hooks/useClosePosition";
 import PositionList from "@/components/PositionList";
 
 export default function MyPositions() {
-  const { publicKey, connected } = useWallet();
+  const { connected } = useWallet();
   const { setVisible } = useWalletModal();
   const { positions, loading, refetch } = usePositions();
+  const { closePosition } = useClosePosition();
   const [mounted, setMounted] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
-  const handleClose = useCallback(async (txSignature: string) => {
-    // For now, redirect to the DEX's native UI to close
-    // Full close position requires SDK integration per DEX
-    const pos = positions.find(p => p.id === txSignature);
+  const handleClose = useCallback(async (posId: string) => {
+    const pos = positions.find(p => p.id === posId);
     if (!pos) return;
 
-    const dex = pos.dex.toLowerCase();
-    let url = "";
-    if (dex === "orca") {
-      url = "https://www.orca.so/liquidity";
-    } else if (dex === "raydium") {
-      url = "https://raydium.io/clmm/pools";
-    } else if (dex === "meteora") {
-      url = "https://app.meteora.ag/dlmm";
+    setClosingId(posId);
+    try {
+      await closePosition(pos);
+      // Refresh positions after close
+      setTimeout(() => refetch(), 2000);
+    } catch (err: any) {
+      // If it's a redirect-to-dex error, open the DEX UI
+      if (err.message?.includes("via")) {
+        const dex = pos.dex.toLowerCase();
+        const urls: Record<string, string> = {
+          raydium: "https://raydium.io/clmm/pools",
+          meteora: "https://app.meteora.ag/dlmm",
+        };
+        if (urls[dex]) window.open(urls[dex], "_blank");
+      }
+      console.warn("Close position failed:", err.message);
+    } finally {
+      setClosingId(null);
     }
-    
-    if (url) window.open(url, "_blank");
-  }, [positions]);
+  }, [positions, closePosition, refetch]);
 
   if (!mounted) return <PositionList positions={[]} loading={true} />;
 

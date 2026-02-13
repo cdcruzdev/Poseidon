@@ -13,4 +13,9 @@ export interface Position {
   age: string;
   feesEarned: string;
   nextRebalance: string;
+  // Close position data
+  positionMint?: string;
+  positionAddress?: string;
+  poolAddress?: string;
+  txSignature?: string;
 }

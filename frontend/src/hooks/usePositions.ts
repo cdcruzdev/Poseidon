@@ -119,6 +119,27 @@ async function fetchSolPrice(): Promise<number> {
 
 let cachedSolPrice = 0;
 
+function extractDexAddresses(tx: HeliusTx, dex: string): { positionMint?: string; positionAddress?: string; poolAddress?: string } {
+  const dexLower = dex.toLowerCase();
+  const dexProgram = dexLower === "orca" ? "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"
+    : dexLower === "raydium" ? "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
+    : "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo";
+
+  const ix = tx.instructions?.find(i => i.programId === dexProgram);
+  if (!ix?.accounts) return {};
+
+  if (dexLower === "orca") {
+    // [funder, owner, position, positionMint, positionTokenAccount, whirlpool, ...]
+    return { positionAddress: ix.accounts[2], positionMint: ix.accounts[3], poolAddress: ix.accounts[5] };
+  } else if (dexLower === "raydium") {
+    // [payer, owner, poolState, positionNftOwner, positionNftMint, ...]
+    return { poolAddress: ix.accounts[2], positionMint: ix.accounts[4] };
+  } else {
+    // Meteora: [position, lbPair, ...]
+    return { positionAddress: ix.accounts[0], poolAddress: ix.accounts[1] };
+  }
+}
+
 function txToPosition(tx: HeliusTx, dex: string, solPrice: number, yieldsByDex: Record<string, number>): Position {
   // Use TOKEN transfers only (includes wrapped SOL). Skip NFT mints.
   const wallet = tx.nativeTransfers?.[0]?.fromUserAccount || "";
@@ -151,8 +172,14 @@ function txToPosition(tx: HeliusTx, dex: string, solPrice: number, yieldsByDex: 
   const yield24h = yieldsByDex[dexKey] || 0;
   const yieldStr = yield24h > 0 ? `${yield24h.toFixed(3)}%` : "-";
 
+  const addrs = extractDexAddresses(tx, dex);
+
   return {
     id: tx.signature,
+    txSignature: tx.signature,
+    positionMint: addrs.positionMint,
+    positionAddress: addrs.positionAddress,
+    poolAddress: addrs.poolAddress,
     pair,
     dex,
     deposited: totalUsd > 0 ? `$${totalUsd.toFixed(2)}` : "-",
