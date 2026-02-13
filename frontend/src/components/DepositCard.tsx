@@ -263,10 +263,10 @@ export default function DepositCard() {
     });
     setPools(topPools);
 
-    if (top10.length > 0) {
-      setSelectedPool(top10[0]);
-      setBestPool(top10[0]);
-      const withPrice = top10.find(p => p.tokenAPrice && p.tokenAPrice > 0);
+    if (topPools.length > 0) {
+      setSelectedPool(topPools[0]);
+      setBestPool(topPools[0]);
+      const withPrice = topPools.find(p => p.tokenAPrice && p.tokenAPrice > 0);
       if (withPrice) {
         setTokenPrices({ tokenA: withPrice.tokenAPrice || 0, tokenB: withPrice.tokenBPrice || 0 });
       }
