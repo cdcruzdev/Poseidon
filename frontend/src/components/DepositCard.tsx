@@ -553,26 +553,19 @@ export default function DepositCard() {
                 </span>
               </div>
             ) : txState === "success" ? (
-              <div className="w-full py-4 bg-[#4ade80]/10 border border-[#4ade80]/20 rounded-xl flex flex-col items-center gap-2">
-                <div className="flex items-center gap-2">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2">
-                    <path d="M20 6L9 17l-5-5" />
-                  </svg>
-                  <span className="text-[#4ade80] font-medium">Deposit Successful!</span>
-                </div>
-                {/* TODO: Re-enable with per-position rebalance
-                {autoRebalance && (
-                  <p className="text-xs text-[#7ec8e8] text-center">Auto-rebalance enabled</p>
-                )}
-                */}
+              <div className="w-full py-2.5 bg-[#4ade80]/10 border border-[#4ade80]/20 rounded-xl flex items-center justify-center gap-3">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+                <span className="text-sm text-[#4ade80] font-medium">Deposit Successful!</span>
                 {txSignature && (
                   <a
-                    href={`https://orbmarkets.io/tx/${txSignature}`}
+                    href={`https://solscan.io/tx/${txSignature}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-[#7ec8e8] hover:underline"
                   >
-                    View on Explorer ↗
+                    View ↗
                   </a>
                 )}
               </div>
