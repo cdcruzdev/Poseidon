@@ -486,13 +486,9 @@ async function fetchAllPositions(wallet: PublicKey, solPrice: number): Promise<P
           const pairData = pairMap.get(lbPair.toBase58());
           if (!pairData) continue;
 
-          // Meteora LB Pair layout: disc(8) + parameters(various) + tokenMintX + tokenMintY
-          // The exact offset depends on the version. Common layout:
-          // disc(8) + params(32 bytes of config) + tokenMintX(32) + tokenMintY(32)
-          // Try offset 8 for tokenMintX
-          let pOff = 8;
-          const mintX = new PublicKey(pairData.subarray(pOff, pOff + 32)); pOff += 32;
-          const mintY = new PublicKey(pairData.subarray(pOff, pOff + 32));
+          // Meteora LB Pair layout: tokenMintX at offset 88, tokenMintY at offset 120
+          const mintX = new PublicKey(pairData.subarray(88, 120));
+          const mintY = new PublicKey(pairData.subarray(120, 152));
 
           const mintXStr = mintX.toBase58();
           const mintYStr = mintY.toBase58();
