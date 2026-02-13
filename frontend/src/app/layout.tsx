@@ -25,10 +25,26 @@ const bebasNeue = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "Poseidon | LP Aggregator",
-  description: "One interface. All DEXs. Best yields. Auto-managed liquidity positions on Solana.",
+  title: "Poseidon | LP Aggregator for Solana",
+  description: "One interface. All DEXs. Best yields. Compare and deploy LP positions across Meteora, Orca, and Raydium.",
+  metadataBase: new URL("https://poseidon.exchange"),
   icons: {
     icon: "/poseidon-icon.png",
+  },
+  openGraph: {
+    title: "Poseidon | LP Aggregator for Solana",
+    description: "One interface. All DEXs. Best yields. Compare and deploy LP positions across Meteora, Orca, and Raydium.",
+    url: "https://poseidon.exchange",
+    siteName: "Poseidon",
+    type: "website",
+    images: ["/og-image.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Poseidon | LP Aggregator for Solana",
+    description: "One interface. All DEXs. Best yields. Compare and deploy LP positions across Meteora, Orca, and Raydium.",
+    creator: "@Poseidon_LP",
+    images: ["/og-image.png"],
   },
 };
 
